@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+system-prompt-builder = {editable = true, path = "."}
+
+[dev-packages]
+mypy = ">=1.15"
+pytest = ">=8.3"
+ruff = ">=0.9"
+types-chevron = "*"
+types-pyyaml = "*"
+
+[requires]
+python_version = "3.14"
+
+[scripts]
+test = "pytest"
+lint = "ruff check ."
+format-check = "ruff format --check ."
+typecheck = "mypy src"
