@@ -1,10 +1,8 @@
 class Spb < Formula
   desc "Compose reproducible, versioned system prompts"
   homepage "https://github.com/iwillig/system-prompt-builder"
-  url "https://github.com/iwillig/system-prompt-builder.git",
-      tag: "v0.1.0",
-      revision: "d1161cf8b672fc0a241a59001b6718b05546170b"
-  version "0.1.0"
+  url "https://github.com/iwillig/system-prompt-builder.git", tag: "v0.1.1"
+  version "0.1.1"
   license "AGPL-3.0-or-later"
 
   depends_on "python@3.14"

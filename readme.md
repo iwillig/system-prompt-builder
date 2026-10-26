@@ -436,11 +436,13 @@ planned follow-on integrations.
 just check             # format, lint, type check, and test
 just run -- --help     # invoke the spb console script
 just build             # check, then install the Homebrew formula from source
+just release v0.1.1    # publish a pushed tag as a GitHub release
 ```
 
-`Formula/spb.rb` targets the `v0.1.0` GitHub release. Create that annotated tag
-at revision `d1161cf8b672fc0a241a59001b6718b05546170b` and publish it before
-running `just build`; Homebrew resolves the formula's pinned tag and revision.
+Before `just release`, commit the release version, create and push its annotated
+tag, and ensure the working tree is clean. The recipe runs all quality gates,
+checks that the tag exists on `origin`, then creates a GitHub release with
+generated notes. `Formula/spb.rb` targets the current release tag.
 
 The tool is written in Python and uses [Click](https://click.palletsprojects.com/)
 for command-line parsing, [Mustache](https://mustache.github.io/) templates via

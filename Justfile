@@ -31,7 +31,12 @@ typecheck:
 run *args:
     pipenv run spb {{args}}
 
-# Run quality gates and install the release formula from source with Homebrew.
-# Requires the v0.1.0 GitHub release named by Formula/spb.rb to exist.
+# Run quality gates and install the tagged release formula from source with Homebrew.
 build: check
     brew install --build-from-source --formula ./Formula/spb.rb
+
+# Publish an existing, pushed tag as a GitHub release with generated notes.
+release version: check
+    git diff --quiet
+    git ls-remote --exit-code --tags origin "refs/tags/{{version}}" > /dev/null
+    gh release create "{{version}}" --verify-tag --generate-notes --title "{{version}}"
