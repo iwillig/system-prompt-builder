@@ -14,6 +14,7 @@ import yaml
 from spb.compression import CompressionResult, compress_prompt
 from spb.evaluation import (
     compare_evaluation_runs,
+    group_mean_scores,
     load_evaluation_suite,
     run_evaluation,
     write_evaluation_comparison,
@@ -275,6 +276,148 @@ def eval_compare(
         )
 
 
+@cli.group()
+def benchmark() -> None:
+    """Run versioned prompt benchmarks with DeepEval."""
+
+
+@benchmark.command("run")
+@click.argument("prompt", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--suite", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option("--harness", required=True)
+@click.option("--var", "variable_pairs", multiple=True, metavar="NAME=VALUE")
+@click.option("--output", type=click.Path(path_type=Path))
+@click.option("--fail-under", type=click.FloatRange(0, 1))
+@click.option(
+    "--min-group-score", "minimum_groups", multiple=True, metavar="GROUP=SCORE"
+)
+@click.option(
+    "--project-root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path("."),
+)
+def benchmark_run(
+    prompt: Path,
+    suite: Path,
+    harness: str,
+    variable_pairs: tuple[str, ...],
+    output: Path | None,
+    fail_under: float | None,
+    minimum_groups: tuple[str, ...],
+    project_root: Path,
+) -> None:
+    """Benchmark PROMPT and persist per-scenario-group scores."""
+    try:
+        rendered = render_prompt(
+            project_root,
+            prompt,
+            harness=harness,
+            variables=_parse_variables(variable_pairs),
+        )
+        loaded_suite = load_evaluation_suite(suite)
+        evaluation_run = run_evaluation(
+            rendered,
+            loaded_suite,
+            suite_sha256=_sha256(suite.read_text(encoding="utf-8")),
+            harness=harness,
+        )
+        minimums = _parse_score_limits(minimum_groups, "--min-group-score")
+        groups = group_mean_scores(evaluation_run)
+        _check_minimum_scores(groups, minimums, "benchmark group")
+        if fail_under is not None and evaluation_run.mean_score < fail_under:
+            raise ValueError(
+                f"Mean score {evaluation_run.mean_score:.3f} is below {fail_under:.3f}"
+            )
+        result_path = write_evaluation_run(
+            evaluation_run,
+            output
+            or project_root
+            / "build"
+            / "benchmarks"
+            / rendered.name
+            / rendered.version
+            / "result.yaml",
+        )
+    except (OSError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(result_path)
+
+
+@benchmark.command("compare")
+@click.argument(
+    "baseline", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.argument(
+    "candidate", type=click.Path(exists=True, dir_okay=False, path_type=Path)
+)
+@click.option("--suite", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option("--harness", required=True)
+@click.option("--var", "variable_pairs", multiple=True, metavar="NAME=VALUE")
+@click.option("--max-score-drop", default=0.0, type=click.FloatRange(0, 1))
+@click.option(
+    "--max-group-score-drop",
+    "maximum_group_drops",
+    multiple=True,
+    metavar="GROUP=SCORE",
+)
+@click.option("--output", type=click.Path(path_type=Path))
+@click.option(
+    "--project-root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path("."),
+)
+def benchmark_compare(
+    baseline: Path,
+    candidate: Path,
+    suite: Path,
+    harness: str,
+    variable_pairs: tuple[str, ...],
+    max_score_drop: float,
+    maximum_group_drops: tuple[str, ...],
+    output: Path | None,
+    project_root: Path,
+) -> None:
+    """Compare BASELINE and CANDIDATE prompt source versions."""
+    try:
+        variables = _parse_variables(variable_pairs)
+        baseline_prompt = render_prompt(
+            project_root, baseline, harness=harness, variables=variables
+        )
+        candidate_prompt = render_prompt(
+            project_root, candidate, harness=harness, variables=variables
+        )
+        loaded_suite = load_evaluation_suite(suite)
+        suite_sha256 = _sha256(suite.read_text(encoding="utf-8"))
+        baseline_run = run_evaluation(
+            baseline_prompt, loaded_suite, suite_sha256=suite_sha256, harness=harness
+        )
+        candidate_run = run_evaluation(
+            candidate_prompt, loaded_suite, suite_sha256=suite_sha256, harness=harness
+        )
+        comparison = compare_evaluation_runs(
+            baseline_run, candidate_run, max_score_drop=max_score_drop
+        )
+        maximums = _parse_score_limits(maximum_group_drops, "--max-group-score-drop")
+        _check_maximum_drops(comparison.group_score_drops, maximums)
+        result_path = write_evaluation_comparison(
+            comparison,
+            output
+            or project_root
+            / "build"
+            / "benchmarks"
+            / candidate_prompt.name
+            / candidate_prompt.version
+            / "comparison.yaml",
+        )
+    except (OSError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(result_path)
+    if not comparison.passed:
+        raise click.ClickException(
+            f"Prompt score dropped by {comparison.score_drop:.3f}"
+        )
+
+
 @cli.command()
 @click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument("destination", type=click.Path(path_type=Path))
@@ -293,6 +436,47 @@ def link(source: Path, destination: Path, replace: bool) -> None:
     except OSError as error:
         raise click.ClickException(f"Unable to create symlink: {error}") from error
     click.echo(destination)
+
+
+def _parse_score_limits(values: tuple[str, ...], option: str) -> dict[str, float]:
+    limits: dict[str, float] = {}
+    for value in values:
+        group, separator, score_text = value.partition("=")
+        if not separator or not group:
+            raise ValueError(f"{option} must use GROUP=SCORE")
+        try:
+            score = float(score_text)
+        except ValueError as error:
+            raise ValueError(f"{option} score must be a number") from error
+        if not 0 <= score <= 1:
+            raise ValueError(f"{option} score must be between 0 and 1")
+        if group in limits:
+            raise ValueError(f"Duplicate {option} group: {group}")
+        limits[group] = score
+    return limits
+
+
+def _check_minimum_scores(
+    actual_scores: dict[str, float], minimums: dict[str, float], label: str
+) -> None:
+    for group, minimum in minimums.items():
+        if group not in actual_scores:
+            raise ValueError(f"Unknown {label}: {group}")
+        if actual_scores[group] < minimum:
+            raise ValueError(
+                f"{label.capitalize()} {group} score {actual_scores[group]:.3f} "
+                f"is below {minimum:.3f}"
+            )
+
+
+def _check_maximum_drops(drops: dict[str, float], maximums: dict[str, float]) -> None:
+    for group, maximum in maximums.items():
+        if group not in drops:
+            raise ValueError(f"Unknown benchmark group: {group}")
+        if drops[group] > maximum:
+            raise ValueError(
+                f"Benchmark group {group} score dropped by {drops[group]:.3f}"
+            )
 
 
 def _parse_variables(variable_pairs: tuple[str, ...]) -> dict[str, str]:

@@ -24,6 +24,7 @@ class MetricSpec:
 @dataclass(frozen=True)
 class EvaluationCase:
     name: str
+    group: str
     input: str
     expected_output: str | None
 
@@ -31,6 +32,7 @@ class EvaluationCase:
 @dataclass(frozen=True)
 class EvaluationSuite:
     model: str
+    judge_model: str | None
     metrics: tuple[MetricSpec, ...]
     cases: tuple[EvaluationCase, ...]
 
@@ -43,6 +45,7 @@ class EvaluationComparison:
     candidate: EvaluationRun
     score_drop: float
     max_score_drop: float
+    group_score_drops: dict[str, float]
 
     @property
     def passed(self) -> bool:
@@ -88,6 +91,11 @@ def compare_evaluation_runs(
         candidate=candidate,
         score_drop=round(baseline.mean_score - candidate.mean_score, 10),
         max_score_drop=max_score_drop,
+        group_score_drops={
+            group: round(baseline_score - candidate_scores[group], 10)
+            for group, baseline_score in group_mean_scores(baseline).items()
+            if (candidate_scores := group_mean_scores(candidate)).get(group) is not None
+        },
     )
 
 
@@ -103,6 +111,7 @@ def write_evaluation_comparison(
                 "candidate": comparison.candidate.as_dict(),
                 "score_drop": comparison.score_drop,
                 "max_score_drop": comparison.max_score_drop,
+                "group_score_drops": comparison.group_score_drops,
                 "passed": comparison.passed,
             },
             sort_keys=False,
@@ -131,11 +140,18 @@ def load_evaluation_suite(path: Path) -> EvaluationSuite:
     cases = tuple(_case(case) for case in _required_list(data, "tests"))
     if not metrics or not cases:
         raise ValueError("Evaluation suite must define metrics and tests")
-    if any(metric.type == "g_eval" for metric in metrics) and any(
-        case.expected_output is None for case in cases
-    ):
+    has_g_eval = any(metric.type == "g_eval" for metric in metrics)
+    if has_g_eval and any(case.expected_output is None for case in cases):
         raise ValueError("g_eval suites require expected_output for every test")
-    return EvaluationSuite(model=model, metrics=metrics, cases=cases)
+    judge_model = data.get("judge_model")
+    if has_g_eval and (not isinstance(judge_model, str) or not judge_model):
+        raise ValueError("g_eval suites require judge_model")
+    return EvaluationSuite(
+        model=model,
+        judge_model=judge_model if isinstance(judge_model, str) else None,
+        metrics=metrics,
+        cases=cases,
+    )
 
 
 def run_evaluation(
@@ -152,6 +168,9 @@ def run_evaluation(
             AnswerRelevancyMetric,
             GEval,
         )
+        from deepeval.models.base_model import (  # type: ignore[import-not-found]
+            DeepEvalBaseLLM,
+        )
         from deepeval.test_case import (  # type: ignore[import-not-found]
             LLMTestCase,
             SingleTurnParams,
@@ -163,6 +182,7 @@ def run_evaluation(
         ) from error
 
     model = llm.get_model(suite.model)
+    judge = _llm_judge(llm, DeepEvalBaseLLM, suite.judge_model)
     results: list[dict[str, Any]] = []
     scores: list[float] = []
     for case in suite.cases:
@@ -172,7 +192,9 @@ def run_evaluation(
         )
         metric_results: list[dict[str, Any]] = []
         for spec in suite.metrics:
-            metric = _build_metric(spec, AnswerRelevancyMetric, GEval, SingleTurnParams)
+            metric = _build_metric(
+                spec, AnswerRelevancyMetric, GEval, SingleTurnParams, judge
+            )
             metric.measure(test_case)
             score = float(metric.score)
             scores.append(score)
@@ -188,6 +210,7 @@ def run_evaluation(
         results.append(
             {
                 "name": case.name,
+                "group": case.group,
                 "input": case.input,
                 "output": output,
                 "metrics": metric_results,
@@ -203,6 +226,7 @@ def run_evaluation(
         mean_score=sum(scores) / len(scores),
         provenance={
             "harness": harness,
+            "judge_model": suite.judge_model,
             "variables": _visible_variables(prompt.variables),
             "skills": [
                 {
@@ -218,6 +242,20 @@ def run_evaluation(
     )
 
 
+def group_mean_scores(run: EvaluationRun) -> dict[str, float]:
+    """Return the mean metric score for every named benchmark group."""
+    grouped_scores: dict[str, list[float]] = {}
+    for case in run.results:
+        group = str(case.get("group", "default"))
+        for metric in case.get("metrics", []):
+            grouped_scores.setdefault(group, []).append(float(metric["score"]))
+    return {
+        group: sum(scores) / len(scores)
+        for group, scores in sorted(grouped_scores.items())
+        if scores
+    }
+
+
 def _visible_variables(variables: dict[str, Any]) -> dict[str, Any]:
     secret_words = ("password", "secret", "token", "key")
     return {
@@ -227,8 +265,30 @@ def _visible_variables(variables: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _llm_judge(llm_module: Any, base_class: Any, model_id: str | None) -> Any:
+    if model_id is None:
+        return None
+
+    judge_model = model_id
+
+    class LlmJudge(base_class):  # type: ignore[misc]
+        def load_model(self) -> Any:
+            return llm_module.get_model(model_id)
+
+        def generate(self, prompt: str) -> str:
+            return str(self.load_model().prompt(prompt).text())
+
+        async def a_generate(self, prompt: str) -> str:
+            return self.generate(prompt)
+
+        def get_model_name(self) -> str:
+            return judge_model
+
+    return LlmJudge()
+
+
 def _build_metric(
-    spec: MetricSpec, answer_relevancy: Any, g_eval: Any, params: Any
+    spec: MetricSpec, answer_relevancy: Any, g_eval: Any, params: Any, judge: Any
 ) -> Any:
     if spec.type == "answer_relevancy":
         return answer_relevancy(threshold=spec.threshold)
@@ -236,6 +296,7 @@ def _build_metric(
         name=spec.name or "G-Eval",
         criteria=spec.criteria or "",
         threshold=spec.threshold,
+        model=judge,
         evaluation_params=[params.INPUT, params.ACTUAL_OUTPUT, params.EXPECTED_OUTPUT],
     )
 
@@ -265,8 +326,12 @@ def _case(value: Any) -> EvaluationCase:
     expected_output = value.get("expected_output")
     if expected_output is not None and not isinstance(expected_output, str):
         raise ValueError("Test expected_output must be a string")
+    group = value.get("group", "default")
+    if not isinstance(group, str) or not group:
+        raise ValueError("Test group must be a non-empty string")
     return EvaluationCase(
         name=_required_string(value, "name"),
+        group=group,
         input=_required_string(value, "input"),
         expected_output=expected_output,
     )

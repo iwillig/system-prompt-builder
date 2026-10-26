@@ -8,6 +8,7 @@ def test_load_evaluation_suite_reads_model_metrics_and_cases(tmp_path: Path) -> 
     suite_path.write_text(
         """\
 model: gpt-4o-mini
+judge_model: local-judge
 metrics:
   - type: answer_relevancy
     threshold: 0.7
@@ -25,6 +26,7 @@ tests:
     suite = load_evaluation_suite(suite_path)
 
     assert suite.model == "gpt-4o-mini"
+    assert suite.judge_model == "local-judge"
     assert suite.metrics[1].type == "g_eval"
     assert suite.cases[0].expected_output == "A concrete bug report."
 
@@ -36,6 +38,7 @@ def test_g_eval_suite_requires_expected_output(tmp_path: Path) -> None:
     suite_path.write_text(
         """\
 model: gpt-4o-mini
+judge_model: local-judge
 metrics:
   - type: g_eval
     name: Coding quality

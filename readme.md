@@ -5,6 +5,11 @@ project configuration, prompt Markdown, reusable skills, and harness-specific
 tool metadata. It produces full-fidelity and optionally compressed prompt
 artifacts, and can evaluate them through direct model calls and DeepEval.
 
+## License
+
+Copyright © 2026 Ivan Willig. Licensed under the
+[GNU Affero General Public License v3.0 or later](LICENSE).
+
 ## Why
 
 Skills and system prompts solve complementary problems. Skills provide focused,
@@ -322,6 +327,7 @@ Create an evaluation suite:
 ```yaml
 # evals/typescript-coder.yaml
 model: spb-local-qwen
+judge_model: independent-judge
 metrics:
   - type: answer_relevancy
     threshold: 0.7
@@ -351,10 +357,12 @@ spb eval run prompts/typescript-coder.md --harness pi-agent \
 ```
 
 The selected `llm` model receives the compiled prompt as its system prompt and
-each suite input as its user prompt. Configure model credentials through `llm`
+each suite input as its user prompt. `judge_model` is required when a suite uses
+`g_eval`; it must name an independent `llm` model or alias so the generation
+model does not grade itself. Configure model credentials through `llm`
 (for example `OPENAI_API_KEY`, `llm keys set`, or installed `llm` provider
-plugins). DeepEval handles metric scoring; its own judge-model credentials and
-configuration follow DeepEval's documentation.
+plugins). DeepEval handles metric scoring through the configured `judge_model`
+`llm` alias.
 
 The first integration supports `answer_relevancy` and `g_eval` metrics. A
 `g_eval` suite requires `expected_output` for every test because the metric
@@ -394,12 +402,45 @@ result. A comparison fails when compression lowers the mean score by more than
 `--max-score-drop`. Use `--compressor none` to verify the comparison workflow
 without loading a compression model.
 
+### Benchmark prompt releases
+
+Label each suite test with an optional `group` (default: `default`) to report
+and gate meaningful scenario categories such as `safety` or `coding`. Benchmark
+an individual prompt release or compare two prompt source files:
+
+```bash
+spb benchmark run prompts/coder-1.1.0.md --harness pi-agent \
+  --suite evals/typescript-coder.yaml --fail-under 0.75 \
+  --min-group-score safety=0.9
+
+spb benchmark compare prompts/coder-1.0.0.md prompts/coder-1.1.0.md \
+  --harness pi-agent --suite evals/typescript-coder.yaml \
+  --max-score-drop 0.02 --max-group-score-drop safety=0.01
+```
+
+Benchmark artifacts are written under `build/benchmarks/<prompt-name>/<version>/`.
+The comparison records the overall and per-group score drops. Both source paths
+are rendered using the same harness, variables, and suite, preserving the
+prompt versions and rendered hashes in the result artifacts.
+
 ## Roadmap
 
 Promptfoo export, multi-turn evaluations, and real harness/tool simulation are
 planned follow-on integrations.
 
 ## Development
+
+[Just](https://just.systems/) provides a concise interface to common workflows:
+
+```bash
+just check             # format, lint, type check, and test
+just run -- --help     # invoke the spb console script
+just build             # check, then install the Homebrew formula from source
+```
+
+`Formula/spb.rb` targets the `v0.1.0` GitHub release. Create that annotated tag
+at revision `d1161cf8b672fc0a241a59001b6718b05546170b` and publish it before
+running `just build`; Homebrew resolves the formula's pinned tag and revision.
 
 The tool is written in Python and uses [Click](https://click.palletsprojects.com/)
 for command-line parsing, [Mustache](https://mustache.github.io/) templates via
