@@ -290,11 +290,38 @@ with [DeepEval](https://deepeval.com/). Install the optional dependencies:
 pipenv run pip install '.[eval]'
 ```
 
+### Local llama.cpp model
+
+See [the local llama.cpp runbook](docs/runbooks/local-llama-cpp.md) for setup,
+health checks, and evaluation commands.
+
+The repository includes a launcher for the cached
+`unsloth/Qwen3.6-35B-A3B-GGUF:Q8_0` model. It starts llama.cpp offline on port
+8080 and exposes the OpenAI-compatible API with the `spb-local-qwen` alias:
+
+```bash
+./scripts/run-local-llama.sh
+```
+
+Configure Simon Willison's `llm` library once on the machine that runs
+Evaluations. Add this entry to
+`~/.config/io.datasette.llm/extra-openai-models.yaml`:
+
+```yaml
+- model_id: spb-local-qwen
+  model_name: spb-local-qwen
+  api_base: http://localhost:8080/v1
+```
+
+Set `model: spb-local-qwen` in a suite to use the local server. Use
+`LLAMA_PORT=8081 ./scripts/run-local-llama.sh` to select another port, and
+update `api_base` to match.
+
 Create an evaluation suite:
 
 ```yaml
 # evals/typescript-coder.yaml
-model: gpt-4o-mini
+model: spb-local-qwen
 metrics:
   - type: answer_relevancy
     threshold: 0.7
@@ -343,7 +370,7 @@ build/evals/<prompt-name>/<version>/result.yaml
 
 It records the prompt/version and rendered digest, suite digest, model,
 per-test outputs, per-metric scores/reasons, and mean score. Use `--output` to
-choose a different result root, or `--fail-under` to make CI fail when the mean
+choose an exact result file, or `--fail-under` to make CI fail when the mean
 metric score falls below a threshold:
 
 ```bash

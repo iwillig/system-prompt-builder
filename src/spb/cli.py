@@ -169,10 +169,24 @@ def eval_run(
                 rendered,
                 loaded_suite,
                 suite_sha256=_sha256(suite.read_text(encoding="utf-8")),
+                harness=harness,
             )
             result_path = write_evaluation_run(
-                evaluation_run, output or project_root / "build" / "evals"
+                evaluation_run,
+                output
+                or project_root
+                / "build"
+                / "evals"
+                / rendered.name
+                / rendered.version
+                / "result.yaml",
             )
+            if any(
+                not metric["passed"]
+                for case in evaluation_run.results
+                for metric in case["metrics"]
+            ):
+                raise click.ClickException("One or more required metrics failed")
             if fail_under is not None and evaluation_run.mean_score < fail_under:
                 raise click.ClickException(
                     f"Mean score {evaluation_run.mean_score:.3f} is below "

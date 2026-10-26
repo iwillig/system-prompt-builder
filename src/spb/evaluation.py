@@ -46,6 +46,7 @@ class EvaluationRun:
     model: str
     results: tuple[dict[str, Any], ...]
     mean_score: float
+    provenance: dict[str, Any]
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -57,13 +58,13 @@ class EvaluationRun:
             },
             "suite": {"sha256": self.suite_sha256, "model": self.model},
             "mean_score": self.mean_score,
+            "provenance": self.provenance,
             "results": list(self.results),
         }
 
 
-def write_evaluation_run(run: EvaluationRun, output_root: Path) -> Path:
-    """Write a deterministic evaluation result artifact."""
-    output_path = output_root / run.prompt_name / run.prompt_version / "result.yaml"
+def write_evaluation_run(run: EvaluationRun, output_path: Path) -> Path:
+    """Write an evaluation result to an explicit artifact path."""
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         yaml.safe_dump(run.as_dict(), sort_keys=False), encoding="utf-8"
@@ -89,7 +90,11 @@ def load_evaluation_suite(path: Path) -> EvaluationSuite:
 
 
 def run_evaluation(
-    prompt: RenderedPrompt, suite: EvaluationSuite, *, suite_sha256: str
+    prompt: RenderedPrompt,
+    suite: EvaluationSuite,
+    *,
+    suite_sha256: str,
+    harness: str,
 ) -> EvaluationRun:
     """Generate direct model responses and evaluate them with DeepEval."""
     try:
@@ -147,7 +152,30 @@ def run_evaluation(
         model=suite.model,
         results=tuple(results),
         mean_score=sum(scores) / len(scores),
+        provenance={
+            "harness": harness,
+            "variables": _visible_variables(prompt.variables),
+            "skills": [
+                {
+                    "reference": skill.reference,
+                    "sha256": skill.sha256,
+                    "gitrepo": skill.gitrepo,
+                    "revision": skill.revision,
+                }
+                for skill in prompt.skills
+            ],
+            "compression": None,
+        },
     )
+
+
+def _visible_variables(variables: dict[str, Any]) -> dict[str, Any]:
+    secret_words = ("password", "secret", "token", "key")
+    return {
+        name: value
+        for name, value in variables.items()
+        if not any(word in name.lower() for word in secret_words)
+    }
 
 
 def _build_metric(

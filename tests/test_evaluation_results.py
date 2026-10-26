@@ -10,9 +10,10 @@ def test_write_evaluation_run_writes_yaml(tmp_path):
         model="test-model",
         results=(),
         mean_score=0.8,
+        provenance={},
     )
 
-    path = write_evaluation_run(run, tmp_path)
+    path = write_evaluation_run(run, tmp_path / "result.yaml")
 
-    assert path == tmp_path / "Coder" / "1.0.0" / "result.yaml"
+    assert path == tmp_path / "result.yaml"
     assert "mean_score: 0.8" in path.read_text(encoding="utf-8")
