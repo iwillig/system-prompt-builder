@@ -386,6 +386,18 @@ spb eval run prompts/typescript-coder.md --harness pi-agent \
   --suite evals/typescript-coder.yaml --fail-under 0.75
 ```
 
+### ECA and OpenTelemetry metrics
+
+Render an ECA agent prompt with the normal harness workflow:
+
+```bash
+spb render prompts/typescript-coder.md --harness eca
+```
+
+Configure ECA to load the resulting artifact and export its native OTLP metrics
+as described in the [ECA integration guide](docs/eca.rst). ECA exports its own
+feature metrics, not distributed traces for `spb` commands.
+
 ### Compare compressed prompts
 
 Compare the uncompressed prompt with a compressed variant using the same suite:
