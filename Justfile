@@ -7,6 +7,9 @@ default:
 # Run all local quality gates.
 check: format-check lint typecheck test
 
+# Run the same checks as the GitHub Actions CI workflow.
+ci: check
+
 # Run the test suite.
 test:
     pipenv run pytest
