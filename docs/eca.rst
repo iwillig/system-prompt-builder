@@ -27,7 +27,7 @@ Render the prompt:
    build/eca/coder.md
 
 Use the rendered artifact in an ECA agent configuration. ECA documents the
-``prompts.chat`` file reference as the custom agent prompt interface.
+``prompts.chat`` file reference as its custom agent prompt interface.
 
 .. code-block:: json
 
@@ -65,7 +65,7 @@ Do not store credentials in the project configuration.
 
 ECA's native integration exports metrics about ECA features. It does not emit
 OpenTelemetry traces for ``spb`` CLI commands. Correlate ECA metrics with a
-specific prompt release using the rendered prompt's manifest, which records the
+specific prompt release through the rendered prompt manifest, which records the
 prompt version and rendered SHA-256 digest.
 
 Sources

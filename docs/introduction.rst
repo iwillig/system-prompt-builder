@@ -1,53 +1,128 @@
-Use a prompt with Pi
-====================
+Get started
+===========
 
-This guide creates a project prompt, renders it, and starts Pi with that prompt.
+This guide installs ``spb``, creates a prompt project, renders one prompt, and
+uses the result with Pi.
 
-After the first PyPI release, install the command:
+Requirements
+------------
+
+System Prompt Builder requires Python 3.14 or later. Git is also required when
+a project uses Git skill providers.
+
+Install from a checkout
+-----------------------
+
+Clone the repository and install the command with ``uv``:
 
 .. code-block:: console
 
-   $ uv tool install system-prompt-builder
+   $ git clone https://github.com/iwillig/system-prompt-builder.git
+   $ cd system-prompt-builder
+   $ uv tool install .
 
-1. Create ``.spb/config.yaml``:
+Confirm that the command is available:
 
-   .. code-block:: yaml
+.. code-block:: console
 
-      version: 1
-      support-harness: [pi-agent]
-      tool-provider-metadata:
-        pi-agent:
-          tools: []
-      skill-providers: []
+   $ spb --help
 
-2. Create ``prompts/project-assistant.md``:
+Create a project
+----------------
 
-   .. code-block:: markdown
+Create this layout in the project that will own the prompt sources:
 
-      ---
-      name: Project assistant
-      version: 1.0.0
-      skills: []
-      ---
-      Work on this project.
-      Read the relevant files before making changes.
-      Run the checks that cover your changes.
+.. code-block:: text
 
-3. Render the prompt and link it into Pi's project configuration:
+   .spb/
+     config.yaml
+   prompts/
+     project-assistant.md
 
-   .. code-block:: console
+Create ``.spb/config.yaml``:
 
-      $ spb render prompts/project-assistant.md --harness pi-agent
-      build/pi-agent/project-assistant.md
-      $ spb link build/pi-agent/project-assistant.md .pi/SYSTEM.md
-      .pi/SYSTEM.md
+.. code-block:: yaml
 
-4. Start Pi from the project root:
+   version: 1
+   support-harness:
+     - pi-agent
 
-   .. code-block:: console
+   tool-provider-metadata:
+     pi-agent:
+       tools:
+         - name: read
+           summary: Read a file from the project.
+         - name: bash
+           summary: Execute a command in the project.
 
-      $ pi --approve
+   skill-providers: []
 
-Pi reads ``.pi/SYSTEM.md`` as the project system prompt after project trust is
-granted. Edit the source prompt, increase its version, then render and link it
-again when you change the instructions.
+Create ``prompts/project-assistant.md``:
+
+.. code-block:: markdown
+
+   ---
+   name: Project assistant
+   version: 1.0.0
+   skills: []
+   variables:
+     project_name:
+       required: true
+   ---
+   You are a coding agent for {{{project_name}}} running in {{harness.name}}.
+
+   Available tools:
+   {{#tools}}
+   - `{{name}}`: {{summary}}
+   {{/tools}}
+
+Validate and render
+-------------------
+
+Validate the project before rendering:
+
+.. code-block:: console
+
+   $ spb validate
+   Validated 1 prompt(s).
+
+Render the prompt for Pi:
+
+.. code-block:: console
+
+   $ spb render prompts/project-assistant.md --harness pi-agent \
+       --var project_name=example
+   build/pi-agent/project-assistant.md
+
+The command also writes
+``build/pi-agent/project-assistant.manifest.yaml``. The manifest identifies the
+prompt version, source and output hashes, selected harness, variables, and
+resolved skills.
+
+Use the prompt with Pi
+----------------------
+
+Link the rendered artifact into Pi's project configuration:
+
+.. code-block:: console
+
+   $ spb link build/pi-agent/project-assistant.md .pi/SYSTEM.md
+   .pi/SYSTEM.md
+
+Start Pi from the project root:
+
+.. code-block:: console
+
+   $ pi --approve
+
+Pi reads ``.pi/SYSTEM.md`` after project trust is granted. Edit the source
+prompt, increase its semantic version, render it again, and update the link when
+you change the instructions.
+
+Next steps
+----------
+
+* Define reusable local or Git skills in :doc:`configuration`.
+* Add variables and Mustache sections with :doc:`prompts`.
+* Review every command and option in :doc:`cli`.
+* Test prompt behavior with :doc:`evaluation`.
