@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +12,13 @@ import click
 import yaml
 
 from spb.compression import CompressionResult, compress_prompt
-from spb.evaluation import load_evaluation_suite, run_evaluation, write_evaluation_run
+from spb.evaluation import (
+    compare_evaluation_runs,
+    load_evaluation_suite,
+    run_evaluation,
+    write_evaluation_comparison,
+    write_evaluation_run,
+)
 from spb.rendering import RenderedPrompt, ResolvedSkill, render_prompt, validate_project
 
 
@@ -197,6 +204,75 @@ def eval_run(
         raise click.ClickException(str(error)) from error
     if dry_run:
         click.echo(f"Validated {len(loaded_suite.cases)} evaluation test(s).")
+
+
+@eval.command("compare")
+@click.argument("prompt", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--suite", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option("--harness", required=True)
+@click.option("--var", "variable_pairs", multiple=True, metavar="NAME=VALUE")
+@click.option(
+    "--compressor", type=click.Choice(["none", "llmlingua"]), default="llmlingua"
+)
+@click.option(
+    "--max-score-drop", default=0.0, type=click.FloatRange(0, 1), show_default=True
+)
+@click.option("--output", type=click.Path(path_type=Path))
+@click.option(
+    "--project-root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path("."),
+)
+def eval_compare(
+    prompt: Path,
+    suite: Path,
+    harness: str,
+    variable_pairs: tuple[str, ...],
+    compressor: str,
+    max_score_drop: float,
+    output: Path | None,
+    project_root: Path,
+) -> None:
+    """Compare normal and compressed PROMPT evaluation scores."""
+    try:
+        rendered = render_prompt(
+            project_root,
+            prompt,
+            harness=harness,
+            variables=_parse_variables(variable_pairs),
+        )
+        compressed = compress_prompt(rendered.content, compressor)
+        loaded_suite = load_evaluation_suite(suite)
+        suite_sha256 = _sha256(suite.read_text(encoding="utf-8"))
+        baseline = run_evaluation(
+            rendered, loaded_suite, suite_sha256=suite_sha256, harness=harness
+        )
+        candidate = run_evaluation(
+            replace(rendered, content=compressed.content),
+            loaded_suite,
+            suite_sha256=suite_sha256,
+            harness=harness,
+        )
+        comparison = compare_evaluation_runs(
+            baseline, candidate, max_score_drop=max_score_drop
+        )
+        result_path = write_evaluation_comparison(
+            comparison,
+            output
+            or project_root
+            / "build"
+            / "evals"
+            / rendered.name
+            / rendered.version
+            / "comparison.yaml",
+        )
+    except (OSError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+    click.echo(result_path)
+    if not comparison.passed:
+        raise click.ClickException(
+            f"Compressed prompt score dropped by {comparison.score_drop:.3f}"
+        )
 
 
 @cli.command()

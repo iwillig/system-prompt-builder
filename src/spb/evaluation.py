@@ -36,6 +36,20 @@ class EvaluationSuite:
 
 
 @dataclass(frozen=True)
+class EvaluationComparison:
+    """Score comparison between rendered prompt variants."""
+
+    baseline: EvaluationRun
+    candidate: EvaluationRun
+    score_drop: float
+    max_score_drop: float
+
+    @property
+    def passed(self) -> bool:
+        return self.score_drop <= self.max_score_drop
+
+
+@dataclass(frozen=True)
 class EvaluationRun:
     """Serializable results and provenance for one evaluation run."""
 
@@ -61,6 +75,41 @@ class EvaluationRun:
             "provenance": self.provenance,
             "results": list(self.results),
         }
+
+
+def compare_evaluation_runs(
+    baseline: EvaluationRun, candidate: EvaluationRun, *, max_score_drop: float
+) -> EvaluationComparison:
+    """Compare candidate quality with the uncompressed baseline."""
+    if not 0 <= max_score_drop <= 1:
+        raise ValueError("Maximum score drop must be between 0 and 1")
+    return EvaluationComparison(
+        baseline=baseline,
+        candidate=candidate,
+        score_drop=round(baseline.mean_score - candidate.mean_score, 10),
+        max_score_drop=max_score_drop,
+    )
+
+
+def write_evaluation_comparison(
+    comparison: EvaluationComparison, output_path: Path
+) -> Path:
+    """Write a compressed-prompt comparison artifact."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        yaml.safe_dump(
+            {
+                "baseline": comparison.baseline.as_dict(),
+                "candidate": comparison.candidate.as_dict(),
+                "score_drop": comparison.score_drop,
+                "max_score_drop": comparison.max_score_drop,
+                "passed": comparison.passed,
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    return output_path
 
 
 def write_evaluation_run(run: EvaluationRun, output_path: Path) -> Path:

@@ -378,6 +378,22 @@ spb eval run prompts/typescript-coder.md --harness pi-agent \
   --suite evals/typescript-coder.yaml --fail-under 0.75
 ```
 
+### Compare compressed prompts
+
+Compare the uncompressed prompt with a compressed variant using the same suite:
+
+```bash
+spb eval compare prompts/typescript-coder.md --harness pi-agent \
+  --suite evals/typescript-coder.yaml \
+  --compressor llmlingua --max-score-drop 0.05
+```
+
+The command writes `comparison.yaml` beside the evaluation result. It stores
+both runs, their mean-score difference, the allowed score drop, and the pass
+result. A comparison fails when compression lowers the mean score by more than
+`--max-score-drop`. Use `--compressor none` to verify the comparison workflow
+without loading a compression model.
+
 ## Roadmap
 
 Promptfoo export, multi-turn evaluations, and real harness/tool simulation are
