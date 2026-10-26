@@ -38,5 +38,6 @@ Project links
 -------------
 
 * `Source repository <https://github.com/iwillig/system-prompt-builder>`_
+* `Changelog <https://github.com/iwillig/system-prompt-builder/blob/main/CHANGELOG.md>`_
 * `Issue tracker <https://github.com/iwillig/system-prompt-builder/issues>`_
 * `License <https://github.com/iwillig/system-prompt-builder/blob/main/LICENSE>`_

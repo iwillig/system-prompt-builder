@@ -76,8 +76,24 @@ formats in clean environments:
 Release workflow
 ----------------
 
-The PyPI workflow runs when a GitHub release is published. It checks out the
-release tag, builds and validates the distributions, verifies that the tag is
+Record user-visible changes in ``CHANGELOG.md`` under ``Unreleased`` while
+working. Before a release, move those entries into a version heading with the
+release date, then update ``pyproject.toml`` and ``Formula/spb.rb`` to the same
+version.
+
+Run the package gate, create and push an annotated tag, then publish the
+release:
+
+.. code-block:: console
+
+   $ just package-check
+   $ git tag -a v0.1.2 -m "v0.1.2"
+   $ git push origin v0.1.2
+   $ just release v0.1.2
+
+The release recipe reads the matching version section from ``CHANGELOG.md`` and
+uses it as the GitHub release notes. The PyPI workflow then checks out the tag,
+builds and validates the distributions, verifies that the tag is
 ``v<project-version>``, and publishes through PyPI trusted publishing.
 
 The repository also contains a local Homebrew formula for the current release.
@@ -108,6 +124,9 @@ The source package separates these responsibilities:
 ``spb.cli``
    Click commands, artifact manifests, release collision checks, symbolic
    linking, and benchmark gates.
+
+``spb.release_notes``
+   Changelog section extraction for GitHub release notes.
 
 XML-style prompt parsing is not supported. Markdown with YAML front matter is
 the prompt source format.

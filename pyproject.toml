@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "system-prompt-builder"
-version = "0.1.1"
+version = "0.1.2"
 description = "Compose reproducible system prompts from Markdown and reusable skills."
 readme = "readme.md"
 license = "AGPL-3.0-or-later"
@@ -28,6 +28,7 @@ llmlingua = ["llmlingua>=0.2.2"]
 
 [project.urls]
 Documentation = "https://www.iwillig.me/system-prompt-builder/"
+Changelog = "https://github.com/iwillig/system-prompt-builder/blob/main/CHANGELOG.md"
 Issues = "https://github.com/iwillig/system-prompt-builder/issues"
 Repository = "https://github.com/iwillig/system-prompt-builder"
 
@@ -38,7 +39,7 @@ spb = "spb.cli:cli"
 packages = ["src/spb"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/spb", "LICENSE", "readme.md", "pyproject.toml"]
+include = ["src/spb", "CHANGELOG.md", "LICENSE", "readme.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

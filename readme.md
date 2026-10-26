@@ -29,6 +29,7 @@ Use these pages as entry points:
 - [Evaluation and benchmarks](https://www.iwillig.me/system-prompt-builder/evaluation.html)
 - [ECA integration](https://www.iwillig.me/system-prompt-builder/eca.html)
 - [Development](https://www.iwillig.me/system-prompt-builder/development.html)
+- [Changelog](CHANGELOG.md)
 
 ## Requirements
 

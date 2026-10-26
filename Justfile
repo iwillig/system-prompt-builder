@@ -52,8 +52,11 @@ run *args:
 build: check
     brew install --build-from-source --formula ./Formula/spb.rb
 
-# Publish an existing, pushed tag as a GitHub release with generated notes.
+# Publish an existing, pushed tag with notes from its changelog section.
 release version: check
-    git diff --quiet
+    test -z "$(git status --porcelain)"
+    test "$(git rev-parse '{{version}}^{}')" = "$(git rev-parse HEAD)"
     git ls-remote --exit-code --tags origin "refs/tags/{{version}}" > /dev/null
-    gh release create "{{version}}" --verify-tag --generate-notes --title "{{version}}"
+    pipenv run python -m spb.release_notes "{{version}}" /tmp/spb-release-notes.md
+    gh release create "{{version}}" --verify-tag --notes-file /tmp/spb-release-notes.md --title "{{version}}"
+    rm -f /tmp/spb-release-notes.md
