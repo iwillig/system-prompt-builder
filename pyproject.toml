@@ -9,6 +9,13 @@ description = "Compose reproducible system prompts from Markdown and reusable sk
 readme = "readme.md"
 license = "AGPL-3.0-or-later"
 requires-python = ">=3.14"
+keywords = ["agents", "llm", "prompts", "system-prompts"]
+classifiers = [
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.14",
+]
 dependencies = [
   "chevron>=0.14.0",
   "click>=8.1.8",
@@ -19,11 +26,19 @@ dependencies = [
 eval = ["deepeval>=3", "llm>=0.27"]
 llmlingua = ["llmlingua>=0.2.2"]
 
+[project.urls]
+Documentation = "https://www.iwillig.me/system-prompt-builder/"
+Issues = "https://github.com/iwillig/system-prompt-builder/issues"
+Repository = "https://github.com/iwillig/system-prompt-builder"
+
 [project.scripts]
 spb = "spb.cli:cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/spb"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/spb", "LICENSE", "readme.md", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
