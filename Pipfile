@@ -12,6 +12,7 @@ pytest = ">=8.3"
 ruff = ">=0.9"
 types-chevron = "*"
 types-pyyaml = "*"
+sphinx = ">=8.2"
 
 [requires]
 python_version = "3.14"

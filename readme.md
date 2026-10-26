@@ -437,6 +437,7 @@ just check             # format, lint, type check, and test
 just run -- --help     # invoke the spb console script
 just build             # check, then install the Homebrew formula from source
 just release v0.1.1    # publish a pushed tag as a GitHub release
+just docs              # build Sphinx HTML documentation
 ```
 
 Before `just release`, commit the release version, create and push its annotated

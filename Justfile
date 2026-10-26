@@ -30,6 +30,10 @@ format:
 typecheck:
     pipenv run mypy src
 
+# Build the Sphinx HTML documentation.
+docs:
+    pipenv run sphinx-build -W --keep-going -b html docs docs/_build/html
+
 # Run the spb CLI; pass subcommands after `--`, e.g. `just run -- --help`.
 run *args:
     pipenv run spb {{args}}
