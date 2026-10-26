@@ -37,12 +37,23 @@ Use these pages as entry points:
 
 ## Install
 
-Install the current release from a checkout:
+Install the published command from PyPI with `uv`:
 
 ```bash
-git clone https://github.com/iwillig/system-prompt-builder.git
-cd system-prompt-builder
-uv tool install .
+uv tool install system-prompt-builder
+```
+
+Upgrade an existing `uv` installation with:
+
+```bash
+uv tool upgrade system-prompt-builder
+```
+
+Alternatively, install and upgrade the command with `pipx`:
+
+```bash
+pipx install system-prompt-builder
+pipx upgrade system-prompt-builder
 ```
 
 For development, install the locked environment with Pipenv:

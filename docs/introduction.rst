@@ -10,16 +10,32 @@ Requirements
 System Prompt Builder requires Python 3.14 or later. Git is also required when
 a project uses Git skill providers.
 
-Install from a checkout
------------------------
+Install from PyPI
+-----------------
 
-Clone the repository and install the command with ``uv``:
+Install the published command with ``uv``:
 
 .. code-block:: console
 
-   $ git clone https://github.com/iwillig/system-prompt-builder.git
-   $ cd system-prompt-builder
-   $ uv tool install .
+   $ uv tool install system-prompt-builder
+
+Upgrade an existing ``uv`` installation with:
+
+.. code-block:: console
+
+   $ uv tool upgrade system-prompt-builder
+
+Alternatively, install the command with ``pipx``:
+
+.. code-block:: console
+
+   $ pipx install system-prompt-builder
+
+Upgrade an existing ``pipx`` installation with:
+
+.. code-block:: console
+
+   $ pipx upgrade system-prompt-builder
 
 Confirm that the command is available:
 
