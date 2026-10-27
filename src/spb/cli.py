@@ -22,7 +22,12 @@ from spb.evaluation import (
     write_evaluation_run,
 )
 from spb.initialization import initialize_project
-from spb.rendering import RenderedPrompt, ResolvedSkill, render_prompt, validate_project
+from spb.rendering import (
+    RenderedPrompt,
+    ResolvedSkill,
+    render_prompt,
+    validate_project,
+)
 
 
 @click.group()
@@ -515,7 +520,7 @@ def _parse_variables(variable_pairs: tuple[str, ...]) -> dict[str, str]:
             raise ValueError("--var must use NAME=VALUE")
         if not re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name):
             raise ValueError(f"--var name must use snake_case: {name}")
-        if name in {"harness", "tools"}:
+        if name in {"harness", "tools", "sections"}:
             raise ValueError(f"Reserved --var name: {name}")
         if name in variables:
             raise ValueError(f"Duplicate --var name: {name}")
@@ -625,6 +630,11 @@ def _manifest(
             for skill in result.skills
         ],
     }
+    if result.layout is not None:
+        manifest["layout"] = {
+            "path": str(result.layout.path),
+            "sha256": result.layout.sha256,
+        }
     if compression is not None:
         manifest["compression"] = {
             "compressor": compression.compressor,

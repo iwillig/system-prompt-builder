@@ -3,7 +3,8 @@ Prompt authoring
 
 A prompt is a Markdown file with YAML front matter. The front matter identifies
 the prompt release, imported skills, and declared template variables. The body
-is rendered with Mustache.
+is rendered with Mustache, either as one template or, when a layout is
+declared, as named sections.
 
 Prompt format
 -------------
@@ -54,6 +55,114 @@ Front matter
    ``snake_case``. Each declaration must contain exactly one of
    ``required: true`` or ``default: <value>``.
 
+``layout``
+   Optional path to a Markdown layout under ``.spb/layouts/``. When present,
+   the body is parsed into sections and composed through the layout. See
+   `Sectioned prompts`_.
+
+Sectioned prompts
+------------------
+
+A prompt body can group its Markdown into named, XML-like sections and let a
+layout template decide the rendered order. The format is opt-in: a body
+without a ``layout`` key is one Mustache template, exactly as before.
+
+A sectioned prompt marks each block with a top-level pseudo-XML tag:
+
+.. code-block:: markdown
+
+   ---
+   name: Symbolic assistant
+   version: 1.0.0
+   layout: .spb/layouts/assistant.md
+   variables:
+     project_name:
+       required: true
+   ---
+   <identity>
+   You are a coding agent for {{{project_name}}}.
+   </identity>
+
+   <rules>
+   1. Work in {{harness.name}}.
+   2. Read source before changing it.
+   </rules>
+
+The layout under ``.spb/layouts/`` receives each section as an already
+rendered value:
+
+.. code-block:: text
+
+   <rules>
+   {{{sections.rules}}}
+   </rules>
+
+   <identity>
+   {{{sections.identity}}}
+   </identity>
+
+Rendering works in two passes. First, each section renders with the full
+template context: ``harness``, ``tools``, and declared variables. Second, the
+layout renders with those rendered sections under the ``sections`` mapping.
+The example layout reverses the source order, so the rendered prompt begins
+with ``<rules>``.
+
+Mustache does not expand tags inside an interpolated value, which is why the
+two passes cannot be merged into one. Triple-brace slots keep the section
+text unescaped; ordinary ``{{sections.name}}`` interpolation would HTML-escape
+the Markdown.
+
+Section rules
+~~~~~~~~~~~~~
+
+* Section names use lowercase ``snake_case`` and each name may appear once.
+* One newline directly after an opening tag and one directly before a closing
+  tag are marker placement, not content. Every other character is preserved:
+  blank lines, indentation, literal ``&``, the text ``&amp;``, and Unicode
+  punctuation.
+* XML-like tags are reserved for structure. Any additional tag inside a
+  section, including a tag inside a Markdown code fence, is rejected. Section
+  attributes, XML comments, processing instructions, and doctypes are rejected
+  as well. Failures name the prompt path and a body line and column.
+* Text outside sections, other than whitespace between them, is rejected.
+* Section extraction performs no XML entity resolution and no escaping, so
+  authors never write CDATA or ``&lt;`` to keep Markdown intact.
+
+Layout rules
+~~~~~~~~~~~~
+
+* A layout is a Markdown file under ``.spb/layouts/``, referenced by the
+  front-matter ``layout`` path.
+* The layout must reference every section exactly once through an unescaped
+  ``{{{sections.<name>}}}`` slot, and must not reference a section the prompt
+  does not define.
+* One trailing newline is removed from each rendered section before
+  insertion, so the layout owns the whitespace around section boundaries.
+* The layout renders with only the ``sections`` mapping. Harness details,
+  tools, and variables belong inside section bodies.
+* ``sections`` is a reserved name in prompt variable declarations and in
+  ``--var``.
+
+When a layout is used, the artifact manifest records the layout path and the
+SHA-256 digest of the layout text next to the existing source and rendered
+digests.
+
+Why use sections
+~~~~~~~~~~~~~~~~
+
+* **Readable sources.** Sections hold plain Markdown. No CDATA blocks and no
+  ``&lt;``-style escaping are needed to keep prose, lists, and code fences
+  intact.
+* **Order independence.** Authors add or reorder sections freely; the layout
+  fixes the rendered order. Reordering or highlighting a section becomes a
+  layout edit that leaves prompt prose untouched.
+* **Separation of content and arrangement.** The same sectioned source can be
+  composed differently by a different layout, so structural experiments do
+  not rewrite instructions.
+* **Honest failure.** Duplicate, mismatched, or unclosed section markers and
+  out-of-section prose fail validation with a source location instead of
+  rendering something the author did not write.
+
 Template context
 ----------------
 
@@ -69,14 +178,18 @@ Declared variables
    Values supplied through ``--var NAME=VALUE`` or taken from front matter
    defaults.
 
+``sections.<name>``
+   Rendered section text, available to a layout. Not available inside a
+   section body, and not a valid variable name.
+
 Mustache escapes ``{{variable}}`` as HTML. Use ``{{{variable}}}`` when the
 value must remain plain text in the generated prompt.
 
 Variable rules
 --------------
 
-Variable names must use lowercase ``snake_case``. ``harness`` and ``tools``
-are reserved.
+Variable names must use lowercase ``snake_case``. ``harness``, ``tools``, and
+``sections`` are reserved.
 
 Every value supplied with ``--var`` must have a declaration. Every required
 variable must be supplied. A supplied value overrides a default. ``--var``

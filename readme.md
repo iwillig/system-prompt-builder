@@ -109,6 +109,13 @@ A project has four main inputs:
 3. Skill providers supply reusable Markdown instructions.
 4. Repeatable `--var NAME=VALUE` options provide declared template values.
 
+A prompt body may also group its Markdown into named pseudo-XML sections. A
+front-matter `layout` path selects a layout under `.spb/layouts/` that arranges
+the rendered sections; the section source stays plain Markdown without XML
+escaping. See the
+[prompt authoring guide](https://www.iwillig.me/system-prompt-builder/prompts.html)
+for the format and its adoption rationale.
+
 `spb render` composes these inputs in deterministic order. It writes the full
 prompt and a manifest containing source and output hashes, resolved skill
 hashes, pinned Git revisions, harness identity, and non-secret variable values.

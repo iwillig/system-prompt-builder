@@ -20,6 +20,7 @@ dependencies = [
   "chevron>=0.14.0",
   "click>=8.1.8",
   "PyYAML>=6.0.2",
+  "sloppy-xml>=0.3.1",
 ]
 
 [project.optional-dependencies]
@@ -58,3 +59,7 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 python_version = "3.14"
 strict = true
 mypy_path = "src"
+
+[[tool.mypy.overrides]]
+module = "sloppy_xml"
+ignore_missing_imports = true

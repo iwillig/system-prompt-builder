@@ -265,6 +265,53 @@ You are a coding agent for {{{project_name}}}.
     assert str(output_path) in result.output
 
 
+def test_render_command_records_layout_in_manifest(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    (tmp_path / ".spb").mkdir()
+    (tmp_path / ".spb" / "config.yaml").write_text(
+        "version: 1\nsupport_harness:\n  - pi_agent\n"
+        "tool_provider_metadata: {pi_agent: {tools: []}}\nskill_providers: []\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".spb" / "layouts").mkdir()
+    (tmp_path / ".spb" / "layouts" / "assistant.md").write_text(
+        "<identity>\n{{{sections.identity}}}\n</identity>\n",
+        encoding="utf-8",
+    )
+    (tmp_path / ".spb" / "prompts").mkdir()
+    prompt_path = tmp_path / ".spb" / "prompts" / "assistant.md"
+    prompt_path.write_text(
+        "---\nname: Assistant\nversion: 1.0.0\n"
+        "layout: .spb/layouts/assistant.md\n---\n<identity>\nYou help.\n</identity>\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "render",
+            str(prompt_path),
+            "--harness",
+            "pi_agent",
+            "--project-root",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    output_path = tmp_path / "build" / "pi_agent" / "assistant.md"
+    assert (
+        output_path.read_text(encoding="utf-8")
+        == "<identity>\nYou help.\n</identity>\n"
+    )
+    manifest = yaml.safe_load(
+        output_path.with_suffix(".manifest.yaml").read_text(encoding="utf-8")
+    )
+    assert manifest["layout"]["path"].endswith(".spb/layouts/assistant.md")
+    assert len(manifest["layout"]["sha256"]) == 64
+
+
 def test_render_rejects_a_local_provider_outside_spb(tmp_path: Path) -> None:
     from spb.cli import cli
 

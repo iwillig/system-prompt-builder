@@ -12,6 +12,12 @@ from typing import Any
 import chevron
 import yaml
 
+from spb.sections import (
+    extract_sections,
+    validate_layout,
+    without_trailing_newline,
+)
+
 
 @dataclass(frozen=True)
 class ResolvedSkill:
@@ -30,6 +36,18 @@ class ResolvedSkill:
 
 
 @dataclass(frozen=True)
+class ResolvedLayout:
+    """A layout template applied to rendered prompt sections."""
+
+    path: Path
+    content: str
+
+    @property
+    def sha256(self) -> str:
+        return hashlib.sha256(self.content.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
 class RenderedPrompt:
     """The user-visible result of composing a prompt for one harness."""
 
@@ -38,6 +56,7 @@ class RenderedPrompt:
     content: str
     variables: dict[str, Any]
     skills: tuple[ResolvedSkill, ...]
+    layout: ResolvedLayout | None = None
 
 
 def render_prompt(
@@ -56,10 +75,24 @@ def render_prompt(
     metadata, body = _read_prompt(prompt_path)
     tools = _tools_for_harness(config, harness)
     resolved_variables = _resolve_variables(metadata, variables or {})
-    rendered_body = chevron.render(
-        body,
-        {"harness": {"name": harness}, "tools": tools, **resolved_variables},
-    ).rstrip()
+    context = {"harness": {"name": harness}, "tools": tools, **resolved_variables}
+    layout_path = _layout_path(project_root, metadata)
+    if layout_path is None:
+        rendered_body = chevron.render(body, context).rstrip()
+        resolved_layout = None
+    else:
+        sections = extract_sections(body, prompt_path)
+        resolved_layout = ResolvedLayout(
+            path=layout_path, content=layout_path.read_text(encoding="utf-8")
+        )
+        validate_layout(resolved_layout.content, sections, layout_path)
+        rendered_sections = {
+            name: without_trailing_newline(chevron.render(value, context))
+            for name, value in sections.items()
+        }
+        rendered_body = chevron.render(
+            resolved_layout.content, {"sections": rendered_sections}
+        ).rstrip()
     skills = tuple(
         _resolve_skill(config, project_root, skill) for skill in _skills(metadata)
     )
@@ -72,6 +105,7 @@ def render_prompt(
         content=content,
         variables=resolved_variables,
         skills=skills,
+        layout=resolved_layout,
     )
 
 
@@ -85,7 +119,13 @@ def validate_project(project_root: Path) -> list[Path]:
     prompt_paths = sorted(prompts_dir.glob("**/*.md"))
     _tools_for_harness(config, harnesses[0])
     for prompt_path in prompt_paths:
-        metadata, _ = _read_prompt(prompt_path)
+        metadata, body = _read_prompt(prompt_path)
+        layout_path = _layout_path(project_root, metadata)
+        if layout_path is not None:
+            sections = extract_sections(body, prompt_path)
+            validate_layout(
+                layout_path.read_text(encoding="utf-8"), sections, layout_path
+            )
         _required_string(metadata, "name")
         _semantic_version(metadata)
         _variable_declarations(metadata)
@@ -143,6 +183,28 @@ def _read_prompt(path: Path) -> tuple[dict[str, Any], str]:
     if not isinstance(metadata, dict):
         raise ValueError(f"Prompt {path} front matter must be a YAML mapping")
     return metadata, body
+
+
+def _layout_path(project_root: Path, metadata: dict[str, Any]) -> Path | None:
+    if "layout" not in metadata:
+        return None
+    value = metadata["layout"]
+    if not isinstance(value, str) or not value:
+        raise ValueError("Prompt layout must be a path under .spb/layouts/")
+    relative = Path(value)
+    root = (project_root / ".spb" / "layouts").resolve()
+    if (
+        relative.is_absolute()
+        or relative.parts[:2] != (".spb", "layouts")
+        or ".." in relative.parts
+        or relative.suffix != ".md"
+        or not (project_root / relative).resolve().is_relative_to(root)
+    ):
+        raise ValueError("Prompt layout must be a Markdown file under .spb/layouts/")
+    layout_path = project_root / relative
+    if not layout_path.is_file():
+        raise ValueError(f"Prompt layout does not exist: {relative}")
+    return layout_path
 
 
 def _supported_harnesses(config: dict[str, Any]) -> list[str]:
@@ -299,7 +361,8 @@ def _variable_declarations(metadata: dict[str, Any]) -> dict[str, dict[str, Any]
         raise ValueError("Prompt variables must be a mapping")
 
     validated: dict[str, dict[str, Any]] = {}
-    reserved = {"harness", "tools"}
+    reserved = {"harness", "tools", "sections"}
+
     for name, declaration in declarations.items():
         if not isinstance(name, str) or not re.fullmatch(
             r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name

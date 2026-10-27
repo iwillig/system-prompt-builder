@@ -7,6 +7,17 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Prompt bodies can group their Markdown into named pseudo-XML sections. A
+  front-matter `layout` path selects a per-prompt layout under `.spb/layouts/`
+  that arranges the rendered sections through `{{{sections.<name>}}}` slots.
+  Section content is plain Markdown; XML-like tags are reserved for section
+  structure. `sections` is now a reserved variable name, and manifests record
+  the layout path and digest when a layout is used. Sections are extracted
+  with the new `sloppy-xml` dependency without XML entity resolution or
+  escaping.
+
 ## [0.2.1] - 2026-10-26
 
 ### Changed

@@ -114,6 +114,10 @@ The source package separates these responsibilities:
    Configuration loading, prompt parsing, variable resolution, skill provider
    resolution, and prompt composition.
 
+``spb.sections``
+   Section extraction from pseudo-XML prompt bodies and layout slot validation,
+   built on the ``sloppy-xml`` parser.
+
 ``spb.compression``
    Optional prompt compression.
 
@@ -128,5 +132,5 @@ The source package separates these responsibilities:
 ``spb.release_notes``
    Changelog section extraction for GitHub release notes.
 
-XML-style prompt parsing is not supported. Markdown with YAML front matter is
-the prompt source format.
+Markdown with YAML front matter remains the prompt source format. A body with
+a declared ``layout`` is parsed into sections; see :doc:`prompts`.
