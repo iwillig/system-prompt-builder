@@ -15,8 +15,8 @@ Initialize the current repository:
    $ spb init
    Initialized System Prompt Builder project in /path/to/example
      .spb/config.yaml
-     prompts/project-assistant.md
-     skills/local/
+     .spb/prompts/project-assistant.md
+     .spb/skills/local/
 
 Initialize another directory:
 
@@ -35,10 +35,10 @@ The command creates this layout:
 
    .spb/
      config.yaml
-   prompts/
-     project-assistant.md
-   skills/
-     local/
+     prompts/
+       project-assistant.md
+     skills/
+       local/
 
 The configuration converts the directory name to snake_case for
 ``project_name``, declares the selected harness, and provides an empty tool
@@ -56,7 +56,7 @@ list:
    skill_providers:
    - name: local
      type: local
-     path: skills/local
+     path: .spb/skills/local
 
 The starter prompt is immediately valid and has no required variables:
 
@@ -92,7 +92,7 @@ Initialization fails before writing anything when either managed file already
 exists:
 
 * ``.spb/config.yaml``
-* ``prompts/project-assistant.md``
+* ``.spb/prompts/project-assistant.md``
 
 The command reports every conflicting path. It does not provide a force option.
 This protects an existing prompt project from accidental replacement.
@@ -106,7 +106,7 @@ After initialization, validate and render the starter prompt:
 
    $ spb validate
    Validated 1 prompt(s).
-   $ spb render prompts/project-assistant.md --harness pi_agent
+   $ spb render .spb/prompts/project-assistant.md --harness pi_agent
    build/pi_agent/project-assistant.md
 
 Edit the configuration and prompt source to match the repository before using

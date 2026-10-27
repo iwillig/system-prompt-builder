@@ -81,14 +81,14 @@ Validate the suite and prompt wiring before making a model call:
 
 ```bash
 spb eval validate evals/typescript-coder.yaml
-spb eval run prompts/typescript-coder.md --harness pi-agent \
+spb eval run .spb/prompts/typescript-coder.md --harness pi_agent \
   --suite evals/typescript-coder.yaml --dry-run
 ```
 
 Run the evaluation after the server is ready:
 
 ```bash
-spb eval run prompts/typescript-coder.md --harness pi-agent \
+spb eval run .spb/prompts/typescript-coder.md --harness pi_agent \
   --suite evals/typescript-coder.yaml
 ```
 

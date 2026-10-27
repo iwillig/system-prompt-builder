@@ -18,7 +18,7 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
         cli,
         [
             "render",
-            str(project_root / "prompts" / "project-assistant.md"),
+            str(project_root / ".spb" / "prompts" / "project-assistant.md"),
             "--harness",
             "pi_agent",
             "--project-root",
@@ -29,16 +29,18 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     config = yaml.safe_load(
         (project_root / ".spb" / "config.yaml").read_text(encoding="utf-8")
     )
-    prompt = (project_root / "prompts" / "project-assistant.md").read_text(
+    prompt = (project_root / ".spb" / "prompts" / "project-assistant.md").read_text(
         encoding="utf-8"
     )
     assert result.exit_code == 0
     assert "Initialized System Prompt Builder project" in result.output
     assert config["project_name"] == "example"
     assert config["support_harness"] == ["pi_agent"]
-    assert config["skill_providers"][0]["path"] == "skills/local"
+    assert config["skill_providers"][0]["path"] == ".spb/skills/local"
     assert "running in {{harness.name}}" in prompt
-    assert (project_root / "skills" / "local").is_dir()
+    assert (project_root / ".spb" / "skills" / "local").is_dir()
+    assert not (project_root / "prompts").exists()
+    assert not (project_root / "skills").exists()
     assert validation.exit_code == 0
     assert "Validated 1 prompt(s)." in validation.output
     assert rendering.exit_code == 0
@@ -81,7 +83,66 @@ def test_init_command_refuses_to_overwrite_managed_files(tmp_path: Path) -> None
     assert result.exit_code != 0
     assert ".spb/config.yaml" in result.output
     assert config_path.read_text(encoding="utf-8") == "existing: true\n"
-    assert not (tmp_path / "prompts").exists()
+    assert not (tmp_path / ".spb" / "prompts").exists()
+
+
+def test_init_refuses_to_overwrite_a_prompt_under_spb(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    prompt_path = tmp_path / ".spb" / "prompts" / "project-assistant.md"
+    prompt_path.parent.mkdir(parents=True)
+    prompt_path.write_text("Existing prompt.\n", encoding="utf-8")
+
+    result = CliRunner().invoke(cli, ["init", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert ".spb/prompts/project-assistant.md" in result.output
+    assert prompt_path.read_text(encoding="utf-8") == "Existing prompt.\n"
+    assert not (tmp_path / ".spb" / "config.yaml").exists()
+
+
+def test_validate_requires_prompts_under_spb(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    (tmp_path / ".spb").mkdir()
+    (tmp_path / ".spb" / "config.yaml").write_text(
+        "support_harness: [pi_agent]\n"
+        "tool_provider_metadata: {pi_agent: {tools: []}}\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "prompts" / "old.md").write_text("Old prompt.\n", encoding="utf-8")
+
+    result = CliRunner().invoke(cli, ["validate", "--project-root", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert ".spb/prompts/" in result.output
+
+
+def test_render_rejects_a_prompt_outside_spb(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    (tmp_path / "prompts").mkdir()
+    prompt_path = tmp_path / "prompts" / "coder.md"
+    prompt_path.write_text("---\nname: Coder\nversion: 1.0.0\n---\nHello.\n")
+
+    result = runner.invoke(
+        cli,
+        [
+            "render",
+            str(prompt_path),
+            "--project-root",
+            str(tmp_path),
+            "--harness",
+            "pi_agent",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Prompt must be under .spb/prompts/" in result.output
+    assert not (tmp_path / "build").exists()
 
 
 @pytest.mark.parametrize(
@@ -122,7 +183,7 @@ def test_validate_rejects_non_snake_case_prompt_variables(
 
     runner = CliRunner()
     assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
-    prompt_path = tmp_path / "prompts" / "project-assistant.md"
+    prompt_path = tmp_path / ".spb" / "prompts" / "project-assistant.md"
     prompt_path.write_text(
         "---\nname: Assistant\nversion: 1.0.0\nvariables:\n"
         f"  {name}:\n    required: true\n---\nHello.\n",
@@ -150,14 +211,14 @@ tool_provider_metadata:
 skill_providers:
   - name: local
     type: local
-    path: skills
+    path: .spb/skills
 """,
         encoding="utf-8",
     )
-    (tmp_path / "skills").mkdir()
-    (tmp_path / "skills" / "workflow.md").write_text("Follow the workflow.\n")
-    (tmp_path / "prompts").mkdir()
-    prompt_path = tmp_path / "prompts" / "coder.md"
+    (tmp_path / ".spb" / "skills").mkdir()
+    (tmp_path / ".spb" / "skills" / "workflow.md").write_text("Follow the workflow.\n")
+    (tmp_path / ".spb" / "prompts").mkdir()
+    prompt_path = tmp_path / ".spb" / "prompts" / "coder.md"
     prompt_path.write_text(
         """\
 ---
@@ -204,6 +265,27 @@ You are a coding agent for {{{project_name}}}.
     assert str(output_path) in result.output
 
 
+def test_render_rejects_a_local_provider_outside_spb(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    config_path = tmp_path / ".spb" / "config.yaml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config["skill_providers"][0]["path"] = "skills/local"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    prompt_path = tmp_path / ".spb" / "prompts" / "project-assistant.md"
+    prompt_path.write_text(
+        "---\nname: Assistant\nversion: 1.0.0\nskills: [local/example]\n---\nHello.\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(cli, ["validate", "--project-root", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert "path must be under .spb/skills/" in result.output
+
+
 def test_validate_rejects_a_prompt_without_a_semantic_version(tmp_path: Path) -> None:
     from spb.cli import cli
 
@@ -220,8 +302,8 @@ skill_providers: []
 """,
         encoding="utf-8",
     )
-    (tmp_path / "prompts").mkdir()
-    (tmp_path / "prompts" / "coder.md").write_text(
+    (tmp_path / ".spb" / "prompts").mkdir()
+    (tmp_path / ".spb" / "prompts" / "coder.md").write_text(
         """\
 ---
 name: Coder
@@ -255,8 +337,8 @@ skill_providers: []
 """,
         encoding="utf-8",
     )
-    (tmp_path / "prompts").mkdir()
-    (tmp_path / "prompts" / "coder.md").write_text(
+    (tmp_path / ".spb" / "prompts").mkdir()
+    (tmp_path / ".spb" / "prompts" / "coder.md").write_text(
         """\
 ---
 name: Coder
@@ -292,8 +374,8 @@ skill_providers: []
 """,
         encoding="utf-8",
     )
-    (tmp_path / "prompts").mkdir()
-    prompt_path = tmp_path / "prompts" / "coder.md"
+    (tmp_path / ".spb" / "prompts").mkdir()
+    prompt_path = tmp_path / ".spb" / "prompts" / "coder.md"
     prompt_path.write_text(
         "---\nname: Coder\nversion: 1.0.0\nskills: []\n---\nFirst release.\n",
         encoding="utf-8",
@@ -355,8 +437,8 @@ skill_providers:
 """,
         encoding="utf-8",
     )
-    (tmp_path / "prompts").mkdir()
-    prompt_path = tmp_path / "prompts" / "coder.md"
+    (tmp_path / ".spb" / "prompts").mkdir()
+    prompt_path = tmp_path / ".spb" / "prompts" / "coder.md"
     prompt_path.write_text(
         "---\nname: Coder\nversion: 1.0.0\nskills: [team/typescript]\n"
         "---\nCode well.\n",
@@ -401,8 +483,8 @@ skill_providers: []
 """,
         encoding="utf-8",
     )
-    (tmp_path / "prompts").mkdir()
-    prompt_path = tmp_path / "prompts" / "coder.md"
+    (tmp_path / ".spb" / "prompts").mkdir()
+    prompt_path = tmp_path / ".spb" / "prompts" / "coder.md"
     prompt_path.write_text(
         "---\nname: Coder\nversion: 1.0.0\nskills: []\n---\nCode well.\n",
         encoding="utf-8",

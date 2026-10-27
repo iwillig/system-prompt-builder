@@ -31,7 +31,7 @@ Complete example
    skill_providers:
      - name: local
        type: local
-       path: skills/local
+       path: .spb/skills/local
 
      - name: team
        type: git
@@ -100,10 +100,10 @@ A local provider reads Markdown files from a project directory:
    skill_providers:
      - name: local
        type: local
-       path: skills/local
+       path: .spb/skills/local
 
 The reference ``local/code-review`` resolves to
-``skills/local/code-review.md``.
+``.spb/skills/local/code-review.md``.
 
 Local provider keys are:
 
@@ -114,7 +114,8 @@ Local provider keys are:
    Must be ``local``.
 
 ``path``
-   Directory containing Markdown skill files, relative to the project root.
+   Directory containing Markdown skill files under ``.spb/skills/``, relative
+   to the project root.
 
 Git skill providers
 -------------------

@@ -49,6 +49,10 @@ def render_prompt(
 ) -> RenderedPrompt:
     """Render a Markdown prompt with its local skills and harness metadata."""
     config = _load_yaml(project_root / ".spb" / "config.yaml")
+    if not prompt_path.resolve().is_relative_to(
+        (project_root / ".spb" / "prompts").resolve()
+    ):
+        raise ValueError("Prompt must be under .spb/prompts/")
     metadata, body = _read_prompt(prompt_path)
     tools = _tools_for_harness(config, harness)
     resolved_variables = _resolve_variables(metadata, variables or {})
@@ -75,7 +79,10 @@ def validate_project(project_root: Path) -> list[Path]:
     """Validate every prompt in the project's prompts directory."""
     config = _load_yaml(project_root / ".spb" / "config.yaml")
     harnesses = _supported_harnesses(config)
-    prompt_paths = sorted((project_root / "prompts").glob("**/*.md"))
+    prompts_dir = project_root / ".spb" / "prompts"
+    if not prompts_dir.is_dir():
+        raise ValueError("Project must contain .spb/prompts/")
+    prompt_paths = sorted(prompts_dir.glob("**/*.md"))
     _tools_for_harness(config, harnesses[0])
     for prompt_path in prompt_paths:
         metadata, _ = _read_prompt(prompt_path)
@@ -191,7 +198,20 @@ def _resolve_skill(
         path = provider.get("path")
         if not isinstance(path, str):
             raise ValueError(f"Local provider {provider_name} must define a path")
-        skill_path = project_root / path / f"{skill_name}.md"
+        provider_path = Path(path)
+        if (
+            provider_path.is_absolute()
+            or provider_path.parts[:2] != (".spb", "skills")
+            or ".." in provider_path.parts
+        ):
+            raise ValueError(
+                f"Local provider {provider_name} path must be under .spb/skills/"
+            )
+        skill_path = project_root / provider_path / f"{skill_name}.md"
+        if not skill_path.resolve().is_relative_to(
+            (project_root / ".spb" / "skills").resolve()
+        ):
+            raise ValueError(f"Local skill {reference} must be under .spb/skills/")
         return ResolvedSkill(
             reference=reference,
             path=skill_path,

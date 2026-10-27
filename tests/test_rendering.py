@@ -18,16 +18,16 @@ tool_provider_metadata:
 skill_providers:
   - name: local
     type: local
-    path: skills
+    path: .spb/skills
 """,
         encoding="utf-8",
     )
-    (tmp_path / "skills").mkdir()
-    (tmp_path / "skills" / "review.md").write_text(
+    (tmp_path / ".spb" / "skills").mkdir()
+    (tmp_path / ".spb" / "skills" / "review.md").write_text(
         "Always explain review findings clearly.\n", encoding="utf-8"
     )
-    (tmp_path / "prompts").mkdir()
-    prompt_path = tmp_path / "prompts" / "coder.md"
+    (tmp_path / ".spb" / "prompts").mkdir()
+    prompt_path = tmp_path / ".spb" / "prompts" / "coder.md"
     prompt_path.write_text(
         """\
 ---

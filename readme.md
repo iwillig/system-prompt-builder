@@ -73,14 +73,14 @@ spb init
 ```
 
 The command creates `.spb/config.yaml`, a valid starter prompt at
-`prompts/project-assistant.md`, and `skills/local/`. It refuses to overwrite an
-existing configuration or starter prompt.
+`.spb/prompts/project-assistant.md`, and `.spb/skills/local/`. It refuses to
+overwrite an existing configuration or starter prompt.
 
 Validate and render the prompt:
 
 ```bash
 spb validate
-spb render prompts/project-assistant.md --harness pi_agent
+spb render .spb/prompts/project-assistant.md --harness pi_agent
 ```
 
 The render command writes:
@@ -105,7 +105,7 @@ A project has four main inputs:
 
 1. `.spb/config.yaml` defines supported harnesses, tool metadata, and skill
    providers.
-2. `prompts/*.md` contains versioned prompt sources with YAML front matter.
+2. `.spb/prompts/*.md` contains versioned prompt sources with YAML front matter.
 3. Skill providers supply reusable Markdown instructions.
 4. Repeatable `--var NAME=VALUE` options provide declared template values.
 

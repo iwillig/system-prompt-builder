@@ -19,7 +19,7 @@ project accept ``--project-root`` where listed.
 
 Initialize a minimal prompt project in the selected directory. The directory is
 created when needed. Initialization refuses to overwrite
-``.spb/config.yaml`` or ``prompts/project-assistant.md``.
+``.spb/config.yaml`` or ``.spb/prompts/project-assistant.md``.
 
 .. code-block:: console
 
@@ -40,13 +40,13 @@ created when needed. Initialization refuses to overwrite
      - Initial harness name written to the project configuration.
 
 The command creates ``.spb/config.yaml``,
-``prompts/project-assistant.md``, and ``skills/local/``. See
+``.spb/prompts/project-assistant.md``, and ``.spb/skills/local/``. See
 :doc:`initialization` for the generated contents and workflow.
 
 ``spb validate``
 ----------------
 
-Validate ``.spb/config.yaml`` and every Markdown prompt below ``prompts/``.
+Validate ``.spb/config.yaml`` and every Markdown prompt below ``.spb/prompts/``.
 Validation checks prompt metadata, semantic versions, variable declarations,
 skill references, provider configuration, and at least one harness mapping.
 Required runtime variable values are not needed during validation.
@@ -64,12 +64,13 @@ Required runtime variable values are not needed during validation.
      - Usage
    * - ``--project-root DIRECTORY``
      - ``.``
-     - Directory containing ``.spb/config.yaml`` and ``prompts/``.
+     - Directory containing ``.spb/config.yaml`` and ``.spb/prompts/``.
 
 ``spb render``
 --------------
 
-Render one prompt into a harness-specific artifact and manifest.
+Render one prompt from ``.spb/prompts/`` into a harness-specific artifact
+and manifest.
 
 .. code-block:: console
 

@@ -53,8 +53,8 @@ Initialize the current repository:
    $ spb init
    Initialized System Prompt Builder project in /path/to/example
      .spb/config.yaml
-     prompts/project-assistant.md
-     skills/local/
+     .spb/prompts/project-assistant.md
+     .spb/skills/local/
 
 The starter project uses ``pi_agent``, contains a valid prompt with no required
 variables, and includes a local skill directory. See :doc:`initialization` for
@@ -74,7 +74,7 @@ Render the prompt for Pi:
 
 .. code-block:: console
 
-   $ spb render prompts/project-assistant.md --harness pi_agent
+   $ spb render .spb/prompts/project-assistant.md --harness pi_agent
    build/pi_agent/project-assistant.md
 
 The command also writes

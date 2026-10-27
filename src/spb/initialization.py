@@ -27,8 +27,8 @@ def initialize_project(project_root: Path, *, harness: str) -> InitializedProjec
 
     root = project_root.resolve()
     config_path = root / ".spb" / "config.yaml"
-    prompt_path = root / "prompts" / "project-assistant.md"
-    skills_path = root / "skills" / "local"
+    prompt_path = root / ".spb" / "prompts" / "project-assistant.md"
+    skills_path = root / ".spb" / "skills" / "local"
     managed_files = (config_path, prompt_path)
     conflicts = [path for path in managed_files if path.exists() or path.is_symlink()]
     if conflicts:
@@ -46,7 +46,9 @@ def initialize_project(project_root: Path, *, harness: str) -> InitializedProjec
         "project_name": project_name or "system_prompt_project",
         "support_harness": [normalized_harness],
         "tool_provider_metadata": {normalized_harness: {"tools": []}},
-        "skill_providers": [{"name": "local", "type": "local", "path": "skills/local"}],
+        "skill_providers": [
+            {"name": "local", "type": "local", "path": ".spb/skills/local"}
+        ],
     }
     prompt = """\
 ---

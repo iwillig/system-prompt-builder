@@ -23,7 +23,7 @@ Render the prompt:
 
 .. code-block:: console
 
-   $ spb render prompts/coder.md --harness eca
+   $ spb render .spb/prompts/coder.md --harness eca
    build/eca/coder.md
 
 Use the rendered artifact in an ECA agent configuration. ECA documents the

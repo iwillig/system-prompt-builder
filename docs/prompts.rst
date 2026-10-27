@@ -75,7 +75,7 @@ value must remain plain text in the generated prompt.
 Variable rules
 --------------
 
-Variable names must match ``[A-Za-z_][A-Za-z0-9_]*``. ``harness`` and ``tools``
+Variable names must use lowercase ``snake_case``. ``harness`` and ``tools``
 are reserved.
 
 Every value supplied with ``--var`` must have a declaration. Every required
@@ -104,7 +104,7 @@ different rendered digest, rendering fails. Increase the prompt version, or use
 Artifact layout
 ---------------
 
-Rendering ``prompts/coder.md`` for ``pi_agent`` writes:
+Rendering ``.spb/prompts/coder.md`` for ``pi_agent`` writes:
 
 .. code-block:: text
 

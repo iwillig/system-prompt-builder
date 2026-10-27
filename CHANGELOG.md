@@ -7,6 +7,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- Prompt sources and local skills now live under `.spb/`. Move existing
+  `prompts/` and `skills/` files there and update local provider paths and
+  prompt arguments before validating or rendering.
+
 ## [0.2.0] - 2026-10-26
 
 ### Added
