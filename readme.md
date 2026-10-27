@@ -23,6 +23,7 @@ The complete documentation is published at:
 Use these pages as entry points:
 
 - [Get started](https://www.iwillig.me/system-prompt-builder/introduction.html)
+- [Initialize a project](https://www.iwillig.me/system-prompt-builder/initialization.html)
 - [Project configuration](https://www.iwillig.me/system-prompt-builder/configuration.html)
 - [Prompt authoring](https://www.iwillig.me/system-prompt-builder/prompts.html)
 - [CLI reference](https://www.iwillig.me/system-prompt-builder/cli.html)
@@ -65,52 +66,21 @@ pipenv sync --dev
 
 ## Quick start
 
-Create `.spb/config.yaml`:
+Initialize the current repository:
 
-```yaml
-version: 1
-support-harness:
-  - pi-agent
-
-tool-provider-metadata:
-  pi-agent:
-    tools:
-      - name: read
-        summary: Read a file from the project.
-      - name: bash
-        summary: Execute a command in the project.
-
-skill-providers:
-  - name: local
-    type: local
-    path: skills/local
+```bash
+spb init
 ```
 
-Create `prompts/project-assistant.md`:
-
-```markdown
----
-name: Project assistant
-version: 1.0.0
-skills: []
-variables:
-  project_name:
-    required: true
----
-You are a coding agent for {{{project_name}}} running in {{harness.name}}.
-
-Available tools:
-{{#tools}}
-- `{{name}}`: {{summary}}
-{{/tools}}
-```
+The command creates `.spb/config.yaml`, a valid starter prompt at
+`prompts/project-assistant.md`, and `skills/local/`. It refuses to overwrite an
+existing configuration or starter prompt.
 
 Validate and render the prompt:
 
 ```bash
 spb validate
-spb render prompts/project-assistant.md --harness pi-agent \
-  --var project_name=example
+spb render prompts/project-assistant.md --harness pi-agent
 ```
 
 The render command writes:
@@ -150,6 +120,7 @@ unless `--replace-release` is provided.
 ## Common commands
 
 ```bash
+spb init [DIRECTORY] [--harness HARNESS]
 spb validate
 spb render PROMPT --harness HARNESS [--var NAME=VALUE]
 spb link SOURCE DESTINATION

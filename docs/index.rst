@@ -17,6 +17,7 @@ configuration, writing prompts, or automating the CLI.
    :caption: User guide
 
    introduction
+   initialization
    configuration
    prompts
    cli

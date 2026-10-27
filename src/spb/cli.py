@@ -20,12 +20,39 @@ from spb.evaluation import (
     write_evaluation_comparison,
     write_evaluation_run,
 )
+from spb.initialization import initialize_project
 from spb.rendering import RenderedPrompt, ResolvedSkill, render_prompt, validate_project
 
 
 @click.group()
 def cli() -> None:
     """Compose reproducible system prompts."""
+
+
+@cli.command()
+@click.argument(
+    "directory",
+    required=False,
+    default=Path("."),
+    type=click.Path(file_okay=False, path_type=Path),
+)
+@click.option(
+    "--harness",
+    default="pi-agent",
+    show_default=True,
+    help="Initial harness name.",
+)
+def init(directory: Path, harness: str) -> None:
+    """Initialize a prompt project in DIRECTORY."""
+    try:
+        project = initialize_project(directory, harness=harness)
+    except (OSError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+
+    click.echo(f"Initialized System Prompt Builder project in {project.root}")
+    for path in (project.config, project.prompt, project.skills):
+        suffix = "/" if path == project.skills else ""
+        click.echo(f"  {path.relative_to(project.root)}{suffix}")
 
 
 @cli.command()

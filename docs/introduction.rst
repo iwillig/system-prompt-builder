@@ -46,51 +46,19 @@ Confirm that the command is available:
 Create a project
 ----------------
 
-Create this layout in the project that will own the prompt sources:
+Initialize the current repository:
 
-.. code-block:: text
+.. code-block:: console
 
-   .spb/
-     config.yaml
-   prompts/
-     project-assistant.md
+   $ spb init
+   Initialized System Prompt Builder project in /path/to/example
+     .spb/config.yaml
+     prompts/project-assistant.md
+     skills/local/
 
-Create ``.spb/config.yaml``:
-
-.. code-block:: yaml
-
-   version: 1
-   support-harness:
-     - pi-agent
-
-   tool-provider-metadata:
-     pi-agent:
-       tools:
-         - name: read
-           summary: Read a file from the project.
-         - name: bash
-           summary: Execute a command in the project.
-
-   skill-providers: []
-
-Create ``prompts/project-assistant.md``:
-
-.. code-block:: markdown
-
-   ---
-   name: Project assistant
-   version: 1.0.0
-   skills: []
-   variables:
-     project_name:
-       required: true
-   ---
-   You are a coding agent for {{{project_name}}} running in {{harness.name}}.
-
-   Available tools:
-   {{#tools}}
-   - `{{name}}`: {{summary}}
-   {{/tools}}
+The starter project uses ``pi-agent``, contains a valid prompt with no required
+variables, and includes a local skill directory. See :doc:`initialization` for
+the generated contents, custom harness selection, and overwrite protection.
 
 Validate and render
 -------------------
@@ -106,8 +74,7 @@ Render the prompt for Pi:
 
 .. code-block:: console
 
-   $ spb render prompts/project-assistant.md --harness pi-agent \
-       --var project_name=example
+   $ spb render prompts/project-assistant.md --harness pi-agent
    build/pi-agent/project-assistant.md
 
 The command also writes
@@ -138,6 +105,7 @@ you change the instructions.
 Next steps
 ----------
 
+* Review initialization options in :doc:`initialization`.
 * Define reusable local or Git skills in :doc:`configuration`.
 * Add variables and Mustache sections with :doc:`prompts`.
 * Review every command and option in :doc:`cli`.

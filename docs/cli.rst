@@ -14,6 +14,35 @@ Global command
 The command has no global configuration options. Commands that read a prompt
 project accept ``--project-root`` where listed.
 
+``spb init``
+------------
+
+Initialize a minimal prompt project in the selected directory. The directory is
+created when needed. Initialization refuses to overwrite
+``.spb/config.yaml`` or ``prompts/project-assistant.md``.
+
+.. code-block:: console
+
+   $ spb init [OPTIONS] [DIRECTORY]
+
+.. list-table:: Arguments and options
+   :header-rows: 1
+   :widths: 24 18 58
+
+   * - Value
+     - Default
+     - Usage
+   * - ``DIRECTORY``
+     - ``.``
+     - Repository or directory that will contain the prompt project.
+   * - ``--harness HARNESS``
+     - ``pi-agent``
+     - Initial harness name written to the project configuration.
+
+The command creates ``.spb/config.yaml``,
+``prompts/project-assistant.md``, and ``skills/local/``. See
+:doc:`initialization` for the generated contents and workflow.
+
 ``spb validate``
 ----------------
 

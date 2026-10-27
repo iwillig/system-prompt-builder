@@ -5,6 +5,60 @@ import yaml
 from click.testing import CliRunner
 
 
+def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    project_root = tmp_path / "example"
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["init", str(project_root)])
+    validation = runner.invoke(cli, ["validate", "--project-root", str(project_root)])
+
+    config = yaml.safe_load(
+        (project_root / ".spb" / "config.yaml").read_text(encoding="utf-8")
+    )
+    prompt = (project_root / "prompts" / "project-assistant.md").read_text(
+        encoding="utf-8"
+    )
+    assert result.exit_code == 0
+    assert "Initialized System Prompt Builder project" in result.output
+    assert config["project-name"] == "example"
+    assert config["support-harness"] == ["pi-agent"]
+    assert config["skill-providers"][0]["path"] == "skills/local"
+    assert "running in {{harness.name}}" in prompt
+    assert (project_root / "skills" / "local").is_dir()
+    assert validation.exit_code == 0
+    assert "Validated 1 prompt(s)." in validation.output
+
+
+def test_init_command_supports_a_custom_harness(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    result = CliRunner().invoke(cli, ["init", str(tmp_path), "--harness", "eca"])
+
+    config = yaml.safe_load(
+        (tmp_path / ".spb" / "config.yaml").read_text(encoding="utf-8")
+    )
+    assert result.exit_code == 0
+    assert config["support-harness"] == ["eca"]
+    assert config["tool-provider-metadata"] == {"eca": {"tools": []}}
+
+
+def test_init_command_refuses_to_overwrite_managed_files(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    config_path = tmp_path / ".spb" / "config.yaml"
+    config_path.parent.mkdir()
+    config_path.write_text("existing: true\n", encoding="utf-8")
+
+    result = CliRunner().invoke(cli, ["init", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert ".spb/config.yaml" in result.output
+    assert config_path.read_text(encoding="utf-8") == "existing: true\n"
+    assert not (tmp_path / "prompts").exists()
+
+
 def test_render_command_writes_a_harness_specific_artifact(tmp_path: Path) -> None:
     from spb.cli import cli
 
