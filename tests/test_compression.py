@@ -43,10 +43,13 @@ def test_only_opted_in_fragment_is_compressed(tmp_path: Path, monkeypatch) -> No
     rendered = render_prompt(tmp_path, prompt_path, harness="pi_agent")
     seen: list[str] = []
 
-    def fake_compress(content: str, compressor: str) -> CompressionResult:
+    def fake_compress(
+        content: str, compressor: str, *, rate: float
+    ) -> CompressionResult:
         seen.append(content)
         assert compressor == "llmlingua"
-        return CompressionResult("Short details.", compressor, {"target_token": 200})
+        assert rate == 0.5
+        return CompressionResult("Short details.", compressor, {"rate": rate})
 
     monkeypatch.setattr(compression, "compress_prompt", fake_compress)
     compressed = compress_rendered_prompt(rendered, "llmlingua")
@@ -96,7 +99,7 @@ def test_empty_compressed_fragment_is_rejected(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(
         compression,
         "compress_prompt",
-        lambda _content, _compressor: CompressionResult("", "llmlingua", {}),
+        lambda _content, _compressor, *, rate: CompressionResult("", "llmlingua", {}),
     )
     with pytest.raises(ValueError, match="empty fragment: details"):
         compress_rendered_prompt(rendered, "llmlingua")
@@ -119,8 +122,23 @@ def test_appended_skill_text_remains_unchanged(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(
         compression,
         "compress_prompt",
-        lambda _content, compressor: CompressionResult("Short.", compressor, {}),
+        lambda _content, compressor, *, rate: CompressionResult(
+            "Short.", compressor, {}
+        ),
     )
     result = compress_rendered_prompt(rendered, "llmlingua")
     assert result.content.endswith("\n\nDo not remove this skill.\n")
     assert "Never change this." in result.content
+
+
+def test_compression_rate_is_validated_and_recorded(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import spb.compression as compression
+
+    rendered = render_prompt(tmp_path, _project(tmp_path), harness="pi_agent")
+    with pytest.raises(ValueError, match="between 0 and 1"):
+        compression.compress_rendered_prompt(rendered, "none", rate=0)
+    result = compression.compress_rendered_prompt(rendered, "none", rate=0.75)
+    assert result.settings["fragments"][0]["settings"] == {"rate": 0.75}
+    assert result.content == rendered.content

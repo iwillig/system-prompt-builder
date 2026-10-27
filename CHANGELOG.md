@@ -19,6 +19,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   fragments list `compressible_fragments` aliases; only those fragments are
   compressed while all other text stays byte-identical. The manifest records
   the compressed aliases with input and output digests.
+- Added `--compress-rate` to `spb render` and `spb eval compare` to set the
+  target fraction of original tokens to keep (default 0.5). LLMLingua now
+  loads one shared CPU-compatible model; override it with
+  `SPB_LLMLINGUA_MODEL` and `SPB_LLMLINGUA_DEVICE`.
 
 ### Changed
 

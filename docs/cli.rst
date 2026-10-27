@@ -105,12 +105,18 @@ fragment alias, source path, and digest.
    * - ``--compressor {none,llmlingua}``
      - ``llmlingua``
      - Select the compressor used with ``--compress``.
+   * - ``--compress-rate RATE``
+     - ``0.5``
+     - Target fraction of original tokens to keep with ``--compress``.
    * - ``--project-root DIRECTORY``
      - ``.``
      - Directory containing ``.spb/config.yaml``.
 
 ``none`` returns the original content and is useful for testing compression
-plumbing. ``llmlingua`` requires the optional ``llmlingua`` dependency.
+plumbing. ``llmlingua`` requires the optional ``llmlingua`` dependency and
+loads the LLMLingua-2 ``bert-base`` model on CPU by default. Set
+``SPB_LLMLINGUA_MODEL`` or ``SPB_LLMLINGUA_DEVICE`` to use another model or
+device.
 
 ``spb link``
 ------------

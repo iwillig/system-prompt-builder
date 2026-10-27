@@ -83,29 +83,27 @@ A bundle with other files, such as imported skill resources, cannot currently
 be used in a system prompt; it must first be adapted into a self-contained
 fragment. Skill import and export are not yet implemented.
 
-For example, put ``Hello {{{project_name}}}.`` in
-``.spb/fragments/identity/FRAGMENT.md`` and define a prompt as:
+This repository's own Python coding assistant is a working example. Its
+system prompt selects nine fragments and delegates placement to a layout:
 
-.. code-block:: markdown
+.. literalinclude:: ../.spb/prompts/python-assistant.md
+   :language: markdown
 
-   ---
-   name: Coding assistant
-   version: 1.0.0
-   layout: .spb/layouts/assistant.md
-   fragments:
-     identity: .spb/fragments/identity
-   variables:
-     project_name:
-       required: true
-   ---
+The layout inserts each selected alias in its chosen section:
 
-Its separate layout chooses the placement:
+.. literalinclude:: ../.spb/layouts/python-assistant.md
+   :language: markdown
 
-.. code-block:: text
+The ``identity`` fragment reads the configured project name:
 
-   <identity>
-   {{{fragments.identity}}}
-   </identity>
+.. literalinclude:: ../.spb/fragments/identity/FRAGMENT.md
+   :language: markdown
+
+The ``built_in_tools`` fragment lists the harness tools configured in
+``.spb/config.yaml``:
+
+.. literalinclude:: ../.spb/fragments/built_in_tools/FRAGMENT.md
+   :language: markdown
 
 The renderer first renders template-mode fragment text with ``project`` from
 ``.spb/config.yaml``, harness, tools, and declared variables. Literal-mode
@@ -128,7 +126,9 @@ prompt's front matter:
 
    compressible_fragments: [rules, examples]
 
-With ``--compress``, only the listed fragments are compressed. Every other
+With ``--compress``, only the listed fragments are compressed. The
+``--compress-rate`` option sets the target fraction of original tokens to
+keep; the default ``0.5`` keeps half. Every other
 fragment, the layout, and appended skill text keep their exact bytes, so
 identity and safety guidance cannot be altered by compression. Each listed
 alias must also appear under ``fragments``. Static validation rejects

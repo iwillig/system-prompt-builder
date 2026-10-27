@@ -106,6 +106,13 @@ def validate(project_root: Path) -> None:
     help="Compressor to use with --compress.",
 )
 @click.option(
+    "--compress-rate",
+    type=click.FloatRange(0, 1, clamp=True),
+    default=0.5,
+    show_default=True,
+    help="Target fraction of the original tokens to keep with --compress.",
+)
+@click.option(
     "--project-root",
     type=click.Path(exists=True, file_okay=False, path_type=Path),
     default=Path("."),
@@ -119,6 +126,7 @@ def render(
     replace_release: bool,
     compress: bool,
     compressor: str,
+    compress_rate: float,
     project_root: Path,
 ) -> None:
     """Render PROMPT into a harness-specific build artifact."""
@@ -133,7 +141,11 @@ def render(
         raise click.ClickException(str(error)) from error
 
     try:
-        compression = compress_rendered_prompt(result, compressor) if compress else None
+        compression = (
+            compress_rendered_prompt(result, compressor, rate=compress_rate)
+            if compress
+            else None
+        )
     except ValueError as error:
         raise click.ClickException(str(error)) from error
 
@@ -255,6 +267,13 @@ def eval_run(
     "--compressor", type=click.Choice(["none", "llmlingua"]), default="llmlingua"
 )
 @click.option(
+    "--compress-rate",
+    type=click.FloatRange(0, 1, clamp=True),
+    default=0.5,
+    show_default=True,
+    help="Target fraction of the original tokens to keep.",
+)
+@click.option(
     "--max-score-drop", default=0.0, type=click.FloatRange(0, 1), show_default=True
 )
 @click.option("--output", type=click.Path(path_type=Path))
@@ -269,6 +288,7 @@ def eval_compare(
     harness: str,
     variable_pairs: tuple[str, ...],
     compressor: str,
+    compress_rate: float,
     max_score_drop: float,
     output: Path | None,
     project_root: Path,
@@ -281,7 +301,7 @@ def eval_compare(
             harness=harness,
             variables=_parse_variables(variable_pairs),
         )
-        compressed = compress_rendered_prompt(rendered, compressor)
+        compressed = compress_rendered_prompt(rendered, compressor, rate=compress_rate)
         loaded_suite = load_evaluation_suite(suite)
         suite_sha256 = _sha256(suite.read_text(encoding="utf-8"))
         baseline = run_evaluation(

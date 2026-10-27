@@ -5,6 +5,7 @@ name = "pypi"
 
 [packages]
 system-prompt-builder = {editable = true, path = "."}
+llmlingua = ">=0.2.2"
 
 [dev-packages]
 mypy = ">=1.15"

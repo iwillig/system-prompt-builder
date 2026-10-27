@@ -92,6 +92,12 @@ A prompt can iterate over the selected harness's tool list:
 fields it reads. ``name`` and ``summary`` are conventional fields rather than a
 fixed tool schema.
 
+This repository configures its own ``pi_agent`` tools this way, and its
+``built_in_tools`` fragment renders them into the rendered prompt:
+
+.. literalinclude:: ../.spb/config.yaml
+   :language: yaml
+
 Local skill providers
 ---------------------
 
