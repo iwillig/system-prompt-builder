@@ -1,0 +1,11 @@
+version: 1
+project_name: system_prompt_builder
+support_harness:
+- pi_agent
+tool_provider_metadata:
+  pi_agent:
+    tools: []
+skill_providers:
+- name: local
+  type: local
+  path: .spb/skills/local

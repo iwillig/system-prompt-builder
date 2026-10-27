@@ -38,12 +38,28 @@ Use ``just format`` to apply Ruff formatting.
 Run the CLI
 -----------
 
-Run the editable console script inside the Pipenv environment:
+Run the editable checkout inside the Pipenv environment:
 
 .. code-block:: console
 
    $ pipenv run spb --help
    $ pipenv run spb validate
+
+To use the checkout as ``spb`` from any working directory, run:
+
+.. code-block:: console
+
+   $ just install-dev
+   $ spb --help
+
+The recipe installs development dependencies, refreshes the editable package,
+removes a pipx installation of ``system-prompt-builder`` if present, and
+creates ``~/bin/spb``. A link at ``~/.local/bin/spb`` makes it available when
+``~/.local/bin`` is on ``PATH``. The launcher keeps the caller's working
+directory, so ``spb validate`` acts on the project you are in. Re-run the
+recipe after moving the checkout or changing its dependencies. It refuses to
+replace a command at either path that belongs to another project. For the
+published PyPI version instead, use the installation steps in :doc:`introduction`.
 
 Build documentation
 -------------------

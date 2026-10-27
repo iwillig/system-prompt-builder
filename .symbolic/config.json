@@ -1,0 +1,4 @@
+{
+  "paths": ["src", "tests"],
+  "database": ".symbolic/facts.dets"
+}

@@ -7,6 +7,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Added `just install-dev` to run the editable checkout as `spb` from any
+  directory, without keeping a separate pipx copy on the same command name.
+
 ## [0.3.0] - 2026-10-27
 
 ### Added

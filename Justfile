@@ -48,6 +48,10 @@ package-check: ci package
 run *args:
     pipenv run spb {{args}}
 
+# Make this editable checkout the machine's default spb command.
+install-dev:
+    bash scripts/install-dev-command.sh
+
 # Run quality gates and install the tagged release formula from source with Homebrew.
 build: check
     brew install --build-from-source --formula ./Formula/spb.rb
