@@ -394,10 +394,11 @@ def test_python_assistant_identity_uses_config_project() -> None:
     result = render_prompt(
         root, root / ".spb" / "prompts" / "python-assistant.md", harness="pi_agent"
     )
-    assert len(result.fragments) == 9
+    assert len(result.fragments) == 10
     assert "built_in_tools" in result.rendered_fragments
     assert "`read`: Read a file's contents" in result.content
-    assert result.version == "0.1.2"
+    assert result.version == "0.1.3"
+    assert "<version>\n0.1.3\n</version>" in result.content
     assert result.content.startswith(
         "<identity>\nYou are a Python coding agent for system_prompt_builder, "
         "running in pi_agent.\n"
@@ -487,3 +488,61 @@ def test_validate_rejects_invalid_config_project_name(tmp_path: Path) -> None:
     project.config.write_text(yaml.safe_dump(config), encoding="utf-8")
     with pytest.raises(ValueError, match="project_name must be a non-empty string"):
         validate_project(tmp_path)
+
+
+def test_fragment_interpolation_does_not_html_escape_values(tmp_path: Path) -> None:
+    import yaml
+
+    from spb.initialization import initialize_project
+    from spb.rendering import render_prompt
+
+    project = initialize_project(tmp_path, harness="pi_agent")
+    config = yaml.safe_load(project.config.read_text(encoding="utf-8"))
+    config["project_name"] = "R&D_shop"
+    project.config.write_text(yaml.safe_dump(config), encoding="utf-8")
+    fragment = tmp_path / ".spb" / "fragments" / "custom"
+    fragment.mkdir()
+    (fragment / "FRAGMENT.md").write_text(
+        "You work on {{{project}}} with {{project}}.\n", encoding="utf-8"
+    )
+    project.prompt.write_text(
+        "---\nname: Assistant\nversion: 1.0.0\n"
+        "layout: .spb/layouts/project-assistant.md\n"
+        "fragments: {instructions: .spb/fragments/custom}\n---\n",
+        encoding="utf-8",
+    )
+
+    result = render_prompt(tmp_path, project.prompt, harness="pi_agent")
+
+    assert "You work on R&D_shop with R&amp;D_shop.\n" in result.content
+
+
+def test_prompt_version_is_available_and_reserved(tmp_path: Path) -> None:
+    from spb.initialization import initialize_project
+    from spb.rendering import render_prompt
+
+    project = initialize_project(tmp_path, harness="pi_agent")
+    fragment = tmp_path / ".spb" / "fragments" / "custom"
+    fragment.mkdir()
+    (fragment / "FRAGMENT.md").write_text(
+        "Version {{{version}}} in {{{harness.name}}}.\n", encoding="utf-8"
+    )
+    project.prompt.write_text(
+        "---\nname: Assistant\nversion: 2.3.4\n"
+        "layout: .spb/layouts/project-assistant.md\n"
+        "fragments: {instructions: .spb/fragments/custom}\n---\n",
+        encoding="utf-8",
+    )
+
+    result = render_prompt(tmp_path, project.prompt, harness="pi_agent")
+
+    assert result.content == "Version 2.3.4 in pi_agent.\n"
+    project.prompt.write_text(
+        "---\nname: Assistant\nversion: 2.3.4\n"
+        "layout: .spb/layouts/project-assistant.md\n"
+        "fragments: {instructions: .spb/fragments/custom}\n"
+        "variables: {version: {default: fake}}\n---\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="reserved"):
+        render_prompt(tmp_path, project.prompt, harness="pi_agent")

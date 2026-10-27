@@ -546,7 +546,7 @@ def _parse_variables(variable_pairs: tuple[str, ...]) -> dict[str, str]:
             raise ValueError("--var must use NAME=VALUE")
         if not re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name):
             raise ValueError(f"--var name must use snake_case: {name}")
-        if name in {"harness", "tools", "sections", "fragments", "project"}:
+        if name in {"harness", "tools", "sections", "fragments", "project", "version"}:
             raise ValueError(f"Reserved --var name: {name}")
         if name in variables:
             raise ValueError(f"Duplicate --var name: {name}")

@@ -257,6 +257,9 @@ The Mustache context contains:
    The ``project_name`` value from ``.spb/config.yaml``. When no project name
    is configured, this Mustache lookup is empty.
 
+``version``
+   The prompt's own semantic version from its front matter.
+
 Declared variables
    Values supplied through ``--var NAME=VALUE`` or taken from front matter
    defaults.
@@ -276,7 +279,7 @@ Variable rules
 --------------
 
 Variable names must use lowercase ``snake_case``. ``harness``, ``tools``,
-``sections``, ``fragments``, and ``project`` are reserved.
+``sections``, ``fragments``, ``project``, and ``version`` are reserved.
 
 Every value supplied with ``--var`` must have a declaration. Every required
 variable must be supplied. A supplied value overrides a default. ``--var``

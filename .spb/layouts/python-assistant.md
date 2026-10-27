@@ -2,6 +2,10 @@
 {{{fragments.identity}}}
 </identity>
 
+<version>
+{{{fragments.version}}}
+</version>
+
 <tools>
 {{{fragments.tools}}}
 

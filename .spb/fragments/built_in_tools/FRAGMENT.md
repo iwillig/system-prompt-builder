@@ -1,5 +1,5 @@
-Built-in tools available in {{harness.name}}:
+Built-in tools available in {{{harness.name}}}:
 
 {{#tools}}
-- `{{name}}`: {{summary}}
+- `{{{name}}}`: {{{summary}}}
 {{/tools}}

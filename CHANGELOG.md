@@ -14,7 +14,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - System prompts can select reusable fragments and place them through a
   separate layout. The manifest records each fragment's source and digest.
 - Template-mode fragments can use `{{project}}` to read `project_name` from
-  project configuration.
+  project configuration, and `{{version}}` to read the prompt's own version.
+  Both names are reserved against declared variables and `--var`.
 - `--compress` now supports fragment-aware compression. Prompts using
   fragments list `compressible_fragments` aliases; only those fragments are
   compressed while all other text stays byte-identical. The manifest records

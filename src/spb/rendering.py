@@ -91,11 +91,13 @@ def render_prompt(
         raise ValueError("Prompt must be under .spb/prompts/")
     metadata, body = _read_prompt(prompt_path)
     tools = _tools_for_harness(config, harness)
+    version = _semantic_version(metadata)
     resolved_variables = _resolve_variables(metadata, variables or {})
     context = {
         "harness": {"name": harness},
         "tools": tools,
         "project": _project_name(config),
+        "version": version,
         **resolved_variables,
     }
     layout_path = _layout_path(project_root, metadata)
@@ -139,7 +141,7 @@ def render_prompt(
     content = _append_skills(rendered_body, skills)
     return RenderedPrompt(
         name=_required_string(metadata, "name"),
-        version=_semantic_version(metadata),
+        version=version,
         content=content,
         variables=resolved_variables,
         skills=skills,
@@ -543,7 +545,7 @@ def _variable_declarations(metadata: dict[str, Any]) -> dict[str, dict[str, Any]
         raise ValueError("Prompt variables must be a mapping")
 
     validated: dict[str, dict[str, Any]] = {}
-    reserved = {"harness", "tools", "sections", "fragments", "project"}
+    reserved = {"harness", "tools", "sections", "fragments", "project", "version"}
 
     for name, declaration in declarations.items():
         if not isinstance(name, str) or not re.fullmatch(
