@@ -87,9 +87,9 @@ release:
 .. code-block:: console
 
    $ just package-check
-   $ git tag -a v0.2.1 -m "v0.2.1"
-   $ git push origin v0.2.1
-   $ just release v0.2.1
+   $ git tag -a v0.3.0 -m "v0.3.0"
+   $ git push origin v0.3.0
+   $ just release v0.3.0
 
 The release recipe reads the matching version section from ``CHANGELOG.md`` and
 uses it as the GitHub release notes. The PyPI workflow then checks out the tag,
