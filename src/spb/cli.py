@@ -56,7 +56,13 @@ def init(directory: Path, harness: str) -> None:
         raise click.ClickException(str(error)) from error
 
     click.echo(f"Initialized System Prompt Builder project in {project.root}")
-    for path in (project.config, project.prompt, project.skills):
+    for path in (
+        project.config,
+        project.prompt,
+        project.layout,
+        project.fragment,
+        project.skills,
+    ):
         suffix = "/" if path == project.skills else ""
         click.echo(f"  {path.relative_to(project.root)}{suffix}")
 
@@ -520,7 +526,7 @@ def _parse_variables(variable_pairs: tuple[str, ...]) -> dict[str, str]:
             raise ValueError("--var must use NAME=VALUE")
         if not re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name):
             raise ValueError(f"--var name must use snake_case: {name}")
-        if name in {"harness", "tools", "sections"}:
+        if name in {"harness", "tools", "sections", "fragments", "project"}:
             raise ValueError(f"Reserved --var name: {name}")
         if name in variables:
             raise ValueError(f"Duplicate --var name: {name}")
@@ -628,6 +634,15 @@ def _manifest(
                 "sha256": skill.sha256,
             }
             for skill in result.skills
+        ],
+        "fragments": [
+            {
+                "alias": fragment.alias,
+                "path": str(fragment.path),
+                "sha256": fragment.sha256,
+                "mode": fragment.mode,
+            }
+            for fragment in result.fragments
         ],
     }
     if result.layout is not None:

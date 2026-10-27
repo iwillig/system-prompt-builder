@@ -37,14 +37,30 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     assert config["project_name"] == "example"
     assert config["support_harness"] == ["pi_agent"]
     assert config["skill_providers"][0]["path"] == ".spb/skills/local"
-    assert "running in {{harness.name}}" in prompt
+    assert "layout: .spb/layouts/project-assistant.md" in prompt
+    assert "instructions: .spb/fragments/project_instructions" in prompt
+    assert "running in {{harness.name}}" in (
+        project_root / ".spb" / "fragments" / "project_instructions" / "FRAGMENT.md"
+    ).read_text(encoding="utf-8")
+    assert (project_root / ".spb" / "layouts" / "project-assistant.md").read_text(
+        encoding="utf-8"
+    ) == "{{{fragments.instructions}}}\n"
+    assert ".spb/fragments/project_instructions/FRAGMENT.md" in result.output
+    assert ".spb/layouts/project-assistant.md" in result.output
     assert (project_root / ".spb" / "skills" / "local").is_dir()
     assert not (project_root / "prompts").exists()
     assert not (project_root / "skills").exists()
     assert validation.exit_code == 0
     assert "Validated 1 prompt(s)." in validation.output
     assert rendering.exit_code == 0
-    assert (project_root / "build" / "pi_agent" / "project-assistant.md").is_file()
+    artifact = project_root / "build" / "pi_agent" / "project-assistant.md"
+    assert artifact.read_text(encoding="utf-8") == (
+        "You are a coding agent running in pi_agent.\n\n"
+        "Read the relevant project files before making changes.\n"
+        "Run the checks that cover your changes.\n"
+    )
+    manifest = yaml.safe_load(artifact.with_suffix(".manifest.yaml").read_text())
+    assert [item["alias"] for item in manifest["fragments"]] == ["instructions"]
 
 
 def test_init_command_supports_a_custom_harness(tmp_path: Path) -> None:
@@ -58,6 +74,21 @@ def test_init_command_supports_a_custom_harness(tmp_path: Path) -> None:
     assert result.exit_code == 0
     assert config["support_harness"] == ["eca"]
     assert config["tool_provider_metadata"] == {"eca": {"tools": []}}
+    rendering = CliRunner().invoke(
+        cli,
+        [
+            "render",
+            str(tmp_path / ".spb" / "prompts" / "project-assistant.md"),
+            "--harness",
+            "eca",
+            "--project-root",
+            str(tmp_path),
+        ],
+    )
+    assert rendering.exit_code == 0, rendering.output
+    assert "running in eca" in (
+        tmp_path / "build" / "eca" / "project-assistant.md"
+    ).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("harness", ["pi-agent", "piAgent"])
@@ -99,6 +130,36 @@ def test_init_refuses_to_overwrite_a_prompt_under_spb(tmp_path: Path) -> None:
     assert ".spb/prompts/project-assistant.md" in result.output
     assert prompt_path.read_text(encoding="utf-8") == "Existing prompt.\n"
     assert not (tmp_path / ".spb" / "config.yaml").exists()
+    assert not (tmp_path / ".spb" / "layouts").exists()
+    assert not (tmp_path / ".spb" / "fragments").exists()
+
+
+@pytest.mark.parametrize(
+    "existing_path",
+    [
+        ".spb/layouts/project-assistant.md",
+        ".spb/fragments/project_instructions/FRAGMENT.md",
+        ".spb/fragments/project_instructions",
+    ],
+)
+def test_init_refuses_to_overwrite_layout_or_fragment(
+    tmp_path: Path, existing_path: str
+) -> None:
+    from spb.cli import cli
+
+    path = tmp_path / existing_path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix:
+        path.write_text("existing\n", encoding="utf-8")
+    else:
+        path.mkdir()
+    result = CliRunner().invoke(cli, ["init", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert existing_path in result.output
+    assert not (tmp_path / ".spb" / "config.yaml").exists()
+    assert not (tmp_path / ".spb" / "prompts").exists()
+    assert path.exists()
 
 
 def test_validate_requires_prompts_under_spb(tmp_path: Path) -> None:
@@ -589,3 +650,77 @@ def _git(repository: Path, *arguments: str) -> str:
         text=True,
         capture_output=True,
     ).stdout
+
+
+def test_fragment_render_manifest_records_source_digest(tmp_path: Path) -> None:
+    import hashlib
+
+    from spb.cli import cli
+
+    (tmp_path / ".spb" / "prompts").mkdir(parents=True)
+    (tmp_path / ".spb" / "config.yaml").write_text(
+        "support_harness: [pi_agent]\n"
+        "tool_provider_metadata: {pi_agent: {tools: []}}\n"
+        "skill_providers: []\n",
+        encoding="utf-8",
+    )
+    bundle = tmp_path / ".spb" / "fragments" / "identity"
+    bundle.mkdir(parents=True)
+    (bundle / "FRAGMENT.md").write_text("Hello.\n", encoding="utf-8")
+    (tmp_path / ".spb" / "layouts").mkdir()
+    (tmp_path / ".spb" / "layouts" / "one.md").write_text(
+        "{{{fragments.identity}}}\n", encoding="utf-8"
+    )
+    prompt = tmp_path / ".spb" / "prompts" / "one.md"
+    prompt.write_text(
+        "---\nname: One\nversion: 1.0.0\n"
+        "layout: .spb/layouts/one.md\n"
+        "fragments: {identity: .spb/fragments/identity}\n---\n",
+        encoding="utf-8",
+    )
+    args = [
+        "render",
+        str(prompt),
+        "--harness",
+        "pi_agent",
+        "--project-root",
+        str(tmp_path),
+    ]
+    result = CliRunner().invoke(cli, args)
+    assert result.exit_code == 0, result.output
+    manifest_path = tmp_path / "build" / "pi_agent" / "one.manifest.yaml"
+    first = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+    assert first["fragments"] == [
+        {
+            "alias": "identity",
+            "path": str(bundle / "FRAGMENT.md"),
+            "sha256": hashlib.sha256(b"Hello.\n").hexdigest(),
+            "mode": "template",
+        }
+    ]
+    (bundle / "FRAGMENT.md").write_text("Changed.\n", encoding="utf-8")
+    collision = CliRunner().invoke(cli, args)
+    assert collision.exit_code != 0
+    assert "release collision" in collision.output
+
+
+def test_render_rejects_project_variable_override(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    result = runner.invoke(
+        cli,
+        [
+            "render",
+            str(tmp_path / ".spb" / "prompts" / "project-assistant.md"),
+            "--harness",
+            "pi_agent",
+            "--project-root",
+            str(tmp_path),
+            "--var",
+            "project=other",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "Reserved --var name: project" in result.output

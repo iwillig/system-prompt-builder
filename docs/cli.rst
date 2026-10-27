@@ -18,8 +18,8 @@ project accept ``--project-root`` where listed.
 ------------
 
 Initialize a minimal prompt project in the selected directory. The directory is
-created when needed. Initialization refuses to overwrite
-``.spb/config.yaml`` or ``.spb/prompts/project-assistant.md``.
+created when needed. Initialization refuses to overwrite its configuration,
+prompt, layout, or instruction fragment.
 
 .. code-block:: console
 
@@ -40,15 +40,19 @@ created when needed. Initialization refuses to overwrite
      - Initial harness name written to the project configuration.
 
 The command creates ``.spb/config.yaml``,
-``.spb/prompts/project-assistant.md``, and ``.spb/skills/local/``. See
-:doc:`initialization` for the generated contents and workflow.
+``.spb/prompts/project-assistant.md``,
+``.spb/layouts/project-assistant.md``,
+``.spb/fragments/project_instructions/FRAGMENT.md``, and
+``.spb/skills/local/``. See :doc:`initialization` for the generated
+contents and workflow.
 
 ``spb validate``
 ----------------
 
 Validate ``.spb/config.yaml`` and every Markdown prompt below ``.spb/prompts/``.
 Validation checks prompt metadata, semantic versions, variable declarations,
-skill references, provider configuration, and at least one harness mapping.
+selected fragment bundles and layout slots, skill references, provider
+configuration, and at least one harness mapping.
 Required runtime variable values are not needed during validation.
 
 .. code-block:: console
@@ -70,7 +74,8 @@ Required runtime variable values are not needed during validation.
 --------------
 
 Render one prompt from ``.spb/prompts/`` into a harness-specific artifact
-and manifest.
+and manifest. When the prompt selects fragments, the manifest records each
+fragment alias, source path, and digest.
 
 .. code-block:: console
 

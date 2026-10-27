@@ -57,7 +57,9 @@ under ``build/pi-agent/`` are not moved; render again to write
    Configuration format version. The current format uses ``1``.
 
 ``project_name``
-   Optional project metadata. It is not used during prompt rendering.
+   Optional non-empty string exposed as ``{{project}}`` to prompt bodies and
+   template-mode fragments. When omitted, the Mustache lookup is empty. Use
+   ``spb init`` to generate a snake_case project name from the directory name.
 
 ``author``
    Optional project metadata. It is not used during prompt rendering.

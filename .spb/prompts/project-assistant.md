@@ -1,9 +1,8 @@
 ---
 name: Project assistant
 version: 1.0.0
+layout: .spb/layouts/project-assistant.md
+fragments:
+  instructions: .spb/fragments/project_instructions
 skills: []
 ---
-You are a coding agent running in {{harness.name}}.
-
-Read the relevant project files before making changes.
-Run the checks that cover your changes.

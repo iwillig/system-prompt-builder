@@ -3,8 +3,8 @@ Prompt authoring
 
 A prompt is a Markdown file with YAML front matter. The front matter identifies
 the prompt release, imported skills, and declared template variables. The body
-is rendered with Mustache, either as one template or, when a layout is
-declared, as named sections.
+is rendered with Mustache, either as one template, from named inline sections,
+or from reusable fragments selected by the system prompt.
 
 Prompt format
 -------------
@@ -57,15 +57,67 @@ Front matter
 
 ``layout``
    Optional path to a Markdown layout under ``.spb/layouts/``. When present,
-   the body is parsed into sections and composed through the layout. See
-   `Sectioned prompts`_.
+   the layout places either inline sections or selected reusable fragments.
+   See `Reusable prompt fragments`_ and `Sectioned prompts`_.
+
+``fragments``
+   Optional, non-empty mapping from lowercase ``snake_case`` aliases to
+   directories under ``.spb/fragments/``. Requires a layout and an empty
+   prompt body. See `Reusable prompt fragments`_.
+
+Reusable prompt fragments
+-------------------------
+
+A system prompt selects reusable instruction bundles and gives each one an
+alias. Only the system prompt selects fragments; fragment text cannot include
+another fragment. A bundle contains ``FRAGMENT.md`` and optionally
+``fragment.yaml`` with ``mode: template`` (the default) or ``mode: literal``.
+A bundle with other files, such as imported skill resources, cannot currently
+be used in a system prompt; it must first be adapted into a self-contained
+fragment. Skill import and export are not yet implemented.
+
+For example, put ``Hello {{{project_name}}}.`` in
+``.spb/fragments/identity/FRAGMENT.md`` and define a prompt as:
+
+.. code-block:: markdown
+
+   ---
+   name: Coding assistant
+   version: 1.0.0
+   layout: .spb/layouts/assistant.md
+   fragments:
+     identity: .spb/fragments/identity
+   variables:
+     project_name:
+       required: true
+   ---
+
+Its separate layout chooses the placement:
+
+.. code-block:: text
+
+   <identity>
+   {{{fragments.identity}}}
+   </identity>
+
+The renderer first renders template-mode fragment text with harness, tools,
+and declared variables. Literal-mode text is not interpolated. It then renders
+the layout with only the ``fragments`` mapping. A layout must use each selected
+alias at least once, may repeat one, and may not reference an unselected alias.
+Use triple-brace slots to avoid HTML-escaping Markdown. The renderer removes
+one trailing newline from each rendered fragment so the layout owns the
+whitespace around it. The manifest records each selected alias, source path,
+and SHA-256 digest. Existing ``skills:`` references still append skill text;
+they do not import or export skill packages.
 
 Sectioned prompts
 ------------------
 
-A prompt body can group its Markdown into named, XML-like sections and let a
-layout template decide the rendered order. The format is opt-in: a body
-without a ``layout`` key is one Mustache template, exactly as before.
+The existing inline-section format remains supported. A prompt body can group
+its Markdown into named, XML-like sections and let a layout template decide
+the rendered order. This format applies when a layout is declared without a
+``fragments`` mapping. Without either feature, the body is one Mustache
+template.
 
 A sectioned prompt marks each block with a top-level pseudo-XML tag:
 
@@ -174,13 +226,21 @@ The Mustache context contains:
 ``tools``
    Tool mappings configured for the selected harness.
 
+``project``
+   The ``project_name`` value from ``.spb/config.yaml``. When no project name
+   is configured, this Mustache lookup is empty.
+
 Declared variables
    Values supplied through ``--var NAME=VALUE`` or taken from front matter
    defaults.
 
 ``sections.<name>``
-   Rendered section text, available to a layout. Not available inside a
-   section body, and not a valid variable name.
+   Rendered inline-section text, available to a legacy sectioned layout.
+   Not available inside a section body, and not a valid variable name.
+
+``fragments.<alias>``
+   Rendered text from a fragment selected by the system prompt, available only
+   to its layout. Not available inside fragment text or as a variable name.
 
 Mustache escapes ``{{variable}}`` as HTML. Use ``{{{variable}}}`` when the
 value must remain plain text in the generated prompt.
@@ -188,8 +248,8 @@ value must remain plain text in the generated prompt.
 Variable rules
 --------------
 
-Variable names must use lowercase ``snake_case``. ``harness``, ``tools``, and
-``sections`` are reserved.
+Variable names must use lowercase ``snake_case``. ``harness``, ``tools``,
+``sections``, ``fragments``, and ``project`` are reserved.
 
 Every value supplied with ``--var`` must have a declaration. Every required
 variable must be supplied. A supplied value overrides a default. ``--var``

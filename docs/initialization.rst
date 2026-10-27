@@ -16,6 +16,8 @@ Initialize the current repository:
    Initialized System Prompt Builder project in /path/to/example
      .spb/config.yaml
      .spb/prompts/project-assistant.md
+     .spb/layouts/project-assistant.md
+     .spb/fragments/project_instructions/FRAGMENT.md
      .spb/skills/local/
 
 Initialize another directory:
@@ -37,6 +39,11 @@ The command creates this layout:
      config.yaml
      prompts/
        project-assistant.md
+     layouts/
+       project-assistant.md
+     fragments/
+       project_instructions/
+         FRAGMENT.md
      skills/
        local/
 
@@ -58,15 +65,31 @@ list:
      type: local
      path: .spb/skills/local
 
-The starter prompt is immediately valid and has no required variables:
+The starter system prompt selects one instruction fragment. It is immediately
+valid and has no required variables:
 
 .. code-block:: markdown
 
    ---
    name: Project assistant
    version: 1.0.0
+   layout: .spb/layouts/project-assistant.md
+   fragments:
+     instructions: .spb/fragments/project_instructions
    skills: []
    ---
+
+The layout at ``.spb/layouts/project-assistant.md`` places that selected
+fragment:
+
+.. code-block:: text
+
+   {{{fragments.instructions}}}
+
+The fragment's ``FRAGMENT.md`` contains the reusable instructions:
+
+.. code-block:: markdown
+
    You are a coding agent running in {{harness.name}}.
 
    Read the relevant project files before making changes.
@@ -88,11 +111,13 @@ The selected name is written to ``support_harness`` and
 Overwrite protection
 --------------------
 
-Initialization fails before writing anything when either managed file already
+Initialization fails before writing anything when any managed path already
 exists:
 
 * ``.spb/config.yaml``
 * ``.spb/prompts/project-assistant.md``
+* ``.spb/layouts/project-assistant.md``
+* ``.spb/fragments/project_instructions/`` or its ``FRAGMENT.md``
 
 The command reports every conflicting path. It does not provide a force option.
 This protects an existing prompt project from accidental replacement.

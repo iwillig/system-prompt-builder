@@ -1,31 +1,31 @@
 <identity>
-{{{sections.identity}}}
+{{{fragments.identity}}}
 </identity>
 
 <tools>
-{{{sections.tools}}}
+{{{fragments.tools}}}
 </tools>
 
 <rules>
-{{{sections.rules}}}
+{{{fragments.rules}}}
 </rules>
 
 <routing>
-{{{sections.routing}}}
+{{{fragments.routing}}}
 </routing>
 
 <schema>
-{{{sections.schema}}}
+{{{fragments.schema}}}
 </schema>
 
 <facts>
-{{{sections.facts}}}
+{{{fragments.facts}}}
 </facts>
 
 <goals>
-{{{sections.goals}}}
+{{{fragments.goals}}}
 </goals>
 
 <output>
-{{{sections.output}}}
+{{{fragments.output}}}
 </output>

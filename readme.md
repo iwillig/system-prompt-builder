@@ -72,9 +72,10 @@ Initialize the current repository:
 spb init
 ```
 
-The command creates `.spb/config.yaml`, a valid starter prompt at
-`.spb/prompts/project-assistant.md`, and `.spb/skills/local/`. It refuses to
-overwrite an existing configuration or starter prompt.
+The command creates `.spb/config.yaml`, a starter system prompt at
+`.spb/prompts/project-assistant.md`, its layout under `.spb/layouts/`,
+a reusable instruction fragment under `.spb/fragments/`, and
+`.spb/skills/local/`. It refuses to overwrite any managed starter path.
 
 Validate and render the prompt:
 
@@ -109,12 +110,12 @@ A project has four main inputs:
 3. Skill providers supply reusable Markdown instructions.
 4. Repeatable `--var NAME=VALUE` options provide declared template values.
 
-A prompt body may also group its Markdown into named pseudo-XML sections. A
-front-matter `layout` path selects a layout under `.spb/layouts/` that arranges
-the rendered sections; the section source stays plain Markdown without XML
-escaping. See the
-[prompt authoring guide](https://www.iwillig.me/system-prompt-builder/prompts.html)
-for the format and its adoption rationale.
+A system prompt can select reusable instruction bundles under
+`.spb/fragments/` and bind them to named `fragments` aliases. Its separate
+layout under `.spb/layouts/` inserts those aliases into the final prompt.
+Inline pseudo-XML sections remain supported for existing prompt sources.
+See the [prompt authoring guide](https://www.iwillig.me/system-prompt-builder/prompts.html)
+for both formats.
 
 `spb render` composes these inputs in deterministic order. It writes the full
 prompt and a manifest containing source and output hashes, resolved skill

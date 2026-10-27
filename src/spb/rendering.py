@@ -36,6 +36,20 @@ class ResolvedSkill:
 
 
 @dataclass(frozen=True)
+class ResolvedFragment:
+    """A prompt-selected fragment with source provenance."""
+
+    alias: str
+    path: Path
+    content: str
+    mode: str
+
+    @property
+    def sha256(self) -> str:
+        return hashlib.sha256(self.content.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
 class ResolvedLayout:
     """A layout template applied to rendered prompt sections."""
 
@@ -57,6 +71,7 @@ class RenderedPrompt:
     variables: dict[str, Any]
     skills: tuple[ResolvedSkill, ...]
     layout: ResolvedLayout | None = None
+    fragments: tuple[ResolvedFragment, ...] = ()
 
 
 def render_prompt(
@@ -75,9 +90,32 @@ def render_prompt(
     metadata, body = _read_prompt(prompt_path)
     tools = _tools_for_harness(config, harness)
     resolved_variables = _resolve_variables(metadata, variables or {})
-    context = {"harness": {"name": harness}, "tools": tools, **resolved_variables}
+    context = {
+        "harness": {"name": harness},
+        "tools": tools,
+        "project": _project_name(config),
+        **resolved_variables,
+    }
     layout_path = _layout_path(project_root, metadata)
-    if layout_path is None:
+    fragments = _fragment_bindings(project_root, metadata, body, prompt_path)
+    if fragments:
+        assert layout_path is not None
+        resolved_layout = ResolvedLayout(
+            path=layout_path, content=layout_path.read_text(encoding="utf-8")
+        )
+        _validate_fragment_layout(resolved_layout.content, fragments, layout_path)
+        rendered_fragments = {
+            fragment.alias: without_trailing_newline(
+                chevron.render(fragment.content, context)
+                if fragment.mode == "template"
+                else fragment.content
+            )
+            for fragment in fragments
+        }
+        rendered_body = chevron.render(
+            resolved_layout.content, {"fragments": rendered_fragments}
+        ).rstrip()
+    elif layout_path is None:
         rendered_body = chevron.render(body, context).rstrip()
         resolved_layout = None
     else:
@@ -106,6 +144,7 @@ def render_prompt(
         variables=resolved_variables,
         skills=skills,
         layout=resolved_layout,
+        fragments=fragments,
     )
 
 
@@ -113,6 +152,7 @@ def validate_project(project_root: Path) -> list[Path]:
     """Validate every prompt in the project's prompts directory."""
     config = _load_yaml(project_root / ".spb" / "config.yaml")
     harnesses = _supported_harnesses(config)
+    _project_name(config)
     prompts_dir = project_root / ".spb" / "prompts"
     if not prompts_dir.is_dir():
         raise ValueError("Project must contain .spb/prompts/")
@@ -121,7 +161,13 @@ def validate_project(project_root: Path) -> list[Path]:
     for prompt_path in prompt_paths:
         metadata, body = _read_prompt(prompt_path)
         layout_path = _layout_path(project_root, metadata)
-        if layout_path is not None:
+        fragments = _fragment_bindings(project_root, metadata, body, prompt_path)
+        if fragments:
+            assert layout_path is not None
+            _validate_fragment_layout(
+                layout_path.read_text(encoding="utf-8"), fragments, layout_path
+            )
+        elif layout_path is not None:
             sections = extract_sections(body, prompt_path)
             validate_layout(
                 layout_path.read_text(encoding="utf-8"), sections, layout_path
@@ -185,6 +231,95 @@ def _read_prompt(path: Path) -> tuple[dict[str, Any], str]:
     return metadata, body
 
 
+def _fragment_bindings(
+    project_root: Path, metadata: dict[str, Any], body: str, prompt_path: Path
+) -> tuple[ResolvedFragment, ...]:
+    if "fragments" not in metadata:
+        return ()
+    bindings = metadata["fragments"]
+    if not isinstance(bindings, dict) or not bindings:
+        raise ValueError(f"Prompt {prompt_path} fragments must be a non-empty mapping")
+    if body.strip():
+        raise ValueError(f"Prompt {prompt_path} body must be empty with fragments")
+    if "layout" not in metadata:
+        raise ValueError(f"Prompt {prompt_path} fragments require a layout")
+    root = (project_root / ".spb" / "fragments").resolve()
+    resolved: list[ResolvedFragment] = []
+    for alias, value in bindings.items():
+        _validate_identifier(alias, "Fragment alias")
+        if not isinstance(value, str):
+            raise ValueError(
+                f"Fragment {alias} must be a directory under .spb/fragments/"
+            )
+        relative = Path(value)
+        bundle = project_root / relative
+        if (
+            relative.is_absolute()
+            or relative.parts[:2] != (".spb", "fragments")
+            or len(relative.parts) < 3
+            or ".." in relative.parts
+            or not bundle.resolve().is_relative_to(root)
+            or not bundle.is_dir()
+            or bundle.is_symlink()
+        ):
+            raise ValueError(f"Fragment {alias} must be under .spb/fragments/")
+        for entry in bundle.rglob("*"):
+            if entry.is_symlink():
+                raise ValueError(f"Fragment {alias} contains a symlink: {entry}")
+        contents = {path.relative_to(bundle).as_posix() for path in bundle.rglob("*")}
+        extra = contents - {"FRAGMENT.md", "fragment.yaml"}
+        if extra:
+            raise ValueError(
+                f"Fragment {alias} has resource files; adapt it for prompt use: "
+                f"{sorted(extra)[0]}"
+            )
+        path = bundle / "FRAGMENT.md"
+        if not path.is_file() or path.is_symlink():
+            raise ValueError(f"Fragment {alias} requires FRAGMENT.md: {path}")
+        mode = "template"
+        config_path = bundle / "fragment.yaml"
+        if config_path.exists():
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            if (
+                not isinstance(config, dict)
+                or set(config) != {"mode"}
+                or config["mode"]
+                not in (
+                    "template",
+                    "literal",
+                )
+            ):
+                raise ValueError(f"Invalid fragment mode in {config_path}")
+            mode = config["mode"]
+        content = path.read_text(encoding="utf-8")
+        if re.search(r"\{\{\{?[#^/&!]?\s*fragments(?:\.|\s*}})", content):
+            raise ValueError(f"Fragment {alias} cannot compose other fragments")
+        resolved.append(
+            ResolvedFragment(alias=alias, path=path, content=content, mode=mode)
+        )
+    return tuple(resolved)
+
+
+def _validate_fragment_layout(
+    layout: str, fragments: tuple[ResolvedFragment, ...], path: Path
+) -> None:
+    slots = re.findall(r"\{\{\{fragments\.([^{}\s]+)\}\}\}", layout)
+    valid = {f"{{{{{{fragments.{name}}}}}}}" for name in slots}
+    for match in re.finditer(
+        r"\{\{\{?\s*[#^/&!]?\s*fragments(?:\.[^{}]*?)?\s*\}\}\}?", layout
+    ):
+        if match.group() not in valid:
+            raise ValueError(f"Layout {path} requires unescaped fragment slots")
+    for name in slots:
+        if name not in {fragment.alias for fragment in fragments}:
+            raise ValueError(f"Layout {path} references missing fragment: {name}")
+    for fragment in fragments:
+        if fragment.alias not in slots:
+            raise ValueError(
+                f"Layout {path} must include {{{{{{fragments.{fragment.alias}}}}}}}"
+            )
+
+
 def _layout_path(project_root: Path, metadata: dict[str, Any]) -> Path | None:
     if "layout" not in metadata:
         return None
@@ -205,6 +340,15 @@ def _layout_path(project_root: Path, metadata: dict[str, Any]) -> Path | None:
     if not layout_path.is_file():
         raise ValueError(f"Prompt layout does not exist: {relative}")
     return layout_path
+
+
+def _project_name(config: dict[str, Any]) -> str | None:
+    name = config.get("project_name")
+    if name is not None and (not isinstance(name, str) or not name):
+        raise ValueError(
+            "Project configuration project_name must be a non-empty string"
+        )
+    return name
 
 
 def _supported_harnesses(config: dict[str, Any]) -> list[str]:
@@ -361,7 +505,7 @@ def _variable_declarations(metadata: dict[str, Any]) -> dict[str, dict[str, Any]
         raise ValueError("Prompt variables must be a mapping")
 
     validated: dict[str, dict[str, Any]] = {}
-    reserved = {"harness", "tools", "sections"}
+    reserved = {"harness", "tools", "sections", "fragments", "project"}
 
     for name, declaration in declarations.items():
         if not isinstance(name, str) or not re.fullmatch(

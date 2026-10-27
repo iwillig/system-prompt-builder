@@ -1,0 +1,5 @@
+The configured scan covers `src/` and `tests/`. Parse the configured project root so both paths enter one fact set. Do not substitute a `src/`-only parse for project-wide questions. For documentation, release configuration, or other unscanned files, read them directly.
+
+For names, use `search_functions`; for definitions, simple recorded call sites, and `#` comments, inspect `overview`, consult the MCP `schema` tool or Symbolic's fact documentation, and use `query`. For Python class methods, keyword calls, call sites at module scope, or docstrings, read source because the Python extractor omits these facts or cannot resolve their meaning. Do not use generic dead-code rules to declare a Python function unused.
+
+For tests and implementation tasks, use Symbolic to find the relevant definitions when it can, then inspect code and run the appropriate Python checks. Ask for clarification when the requested function or behavior is ambiguous rather than choosing a same-named definition in another scope.
