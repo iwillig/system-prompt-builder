@@ -18,6 +18,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   with the new `sloppy-xml` dependency without XML entity resolution or
   escaping.
 
+### Changed
+
+- The hosted documentation now uses the Furo theme, which follows the reader's
+  color-scheme preference and provides a light and dark toggle.
+
 ## [0.2.1] - 2026-10-26
 
 ### Changed

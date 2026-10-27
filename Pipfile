@@ -13,6 +13,7 @@ ruff = ">=0.9"
 types-chevron = "*"
 types-pyyaml = "*"
 sphinx = ">=8.2"
+furo = ">=2024.8.6"
 build = ">=1.2"
 twine = ">=6.1"
 
