@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +72,8 @@ class RenderedPrompt:
     skills: tuple[ResolvedSkill, ...]
     layout: ResolvedLayout | None = None
     fragments: tuple[ResolvedFragment, ...] = ()
+    rendered_fragments: dict[str, str] = field(default_factory=dict)
+    compressible_fragments: tuple[str, ...] = ()
 
 
 def render_prompt(
@@ -98,6 +100,8 @@ def render_prompt(
     }
     layout_path = _layout_path(project_root, metadata)
     fragments = _fragment_bindings(project_root, metadata, body, prompt_path)
+    compressible = _compressible_fragments(metadata, fragments)
+    rendered_fragments: dict[str, str] = {}
     if fragments:
         assert layout_path is not None
         resolved_layout = ResolvedLayout(
@@ -112,9 +116,7 @@ def render_prompt(
             )
             for fragment in fragments
         }
-        rendered_body = chevron.render(
-            resolved_layout.content, {"fragments": rendered_fragments}
-        ).rstrip()
+        rendered_body = _compose_fragment_body(resolved_layout, rendered_fragments)
     elif layout_path is None:
         rendered_body = chevron.render(body, context).rstrip()
         resolved_layout = None
@@ -134,9 +136,7 @@ def render_prompt(
     skills = tuple(
         _resolve_skill(config, project_root, skill) for skill in _skills(metadata)
     )
-    content = rendered_body + (
-        "\n\n" + "\n\n".join(skill.content for skill in skills) if skills else "\n"
-    )
+    content = _append_skills(rendered_body, skills)
     return RenderedPrompt(
         name=_required_string(metadata, "name"),
         version=_semantic_version(metadata),
@@ -145,6 +145,8 @@ def render_prompt(
         skills=skills,
         layout=resolved_layout,
         fragments=fragments,
+        rendered_fragments=rendered_fragments,
+        compressible_fragments=compressible,
     )
 
 
@@ -162,6 +164,7 @@ def validate_project(project_root: Path) -> list[Path]:
         metadata, body = _read_prompt(prompt_path)
         layout_path = _layout_path(project_root, metadata)
         fragments = _fragment_bindings(project_root, metadata, body, prompt_path)
+        _compressible_fragments(metadata, fragments)
         if fragments:
             assert layout_path is not None
             _validate_fragment_layout(
@@ -178,6 +181,41 @@ def validate_project(project_root: Path) -> list[Path]:
         for skill in _skills(metadata):
             _resolve_skill(config, project_root, skill)
     return prompt_paths
+
+
+def compose_fragment_content(prompt: RenderedPrompt, values: dict[str, str]) -> str:
+    """Compose a fragment variant without changing its layout or appended skills."""
+    if prompt.layout is None or not prompt.fragments:
+        raise ValueError("Prompt does not use fragments")
+    if set(values) != set(prompt.rendered_fragments):
+        raise ValueError("Fragment values must match the prompt's selected aliases")
+    return _append_skills(_compose_fragment_body(prompt.layout, values), prompt.skills)
+
+
+def _compose_fragment_body(layout: ResolvedLayout, values: dict[str, str]) -> str:
+    return chevron.render(layout.content, {"fragments": values}).rstrip()
+
+
+def _append_skills(body: str, skills: tuple[ResolvedSkill, ...]) -> str:
+    return body + (
+        "\n\n" + "\n\n".join(skill.content for skill in skills) if skills else "\n"
+    )
+
+
+def _compressible_fragments(
+    metadata: dict[str, Any], fragments: tuple[ResolvedFragment, ...]
+) -> tuple[str, ...]:
+    if "compressible_fragments" not in metadata:
+        return ()
+    selected = metadata["compressible_fragments"]
+    if not fragments or not isinstance(selected, list) or not selected:
+        raise ValueError("compressible_fragments requires selected fragments")
+    aliases = {fragment.alias for fragment in fragments}
+    if any(not isinstance(alias, str) or alias not in aliases for alias in selected):
+        raise ValueError("compressible_fragments must name selected aliases")
+    if len(set(selected)) != len(selected):
+        raise ValueError("compressible_fragments contains duplicate aliases")
+    return tuple(selected)
 
 
 def _load_yaml(path: Path) -> dict[str, Any]:

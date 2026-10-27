@@ -139,6 +139,11 @@ Compare the full prompt with a compressed variant:
 Use ``--compressor none`` to test the comparison workflow without loading a
 compression model.
 
+For a prompt that uses fragments, ``spb eval compare`` compresses only the
+aliases the prompt lists under ``compressible_fragments``. Add that front
+matter key before comparing a fragment-based prompt; the comparison fails
+without it.
+
 Benchmark prompt releases
 -------------------------
 

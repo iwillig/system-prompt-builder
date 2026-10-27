@@ -15,6 +15,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   separate layout. The manifest records each fragment's source and digest.
 - Template-mode fragments can use `{{project}}` to read `project_name` from
   project configuration.
+- `--compress` now supports fragment-aware compression. Prompts using
+  fragments list `compressible_fragments` aliases; only those fragments are
+  compressed while all other text stays byte-identical. The manifest records
+  the compressed aliases with input and output digests.
 
 ### Changed
 

@@ -394,8 +394,10 @@ def test_python_assistant_identity_uses_config_project() -> None:
     result = render_prompt(
         root, root / ".spb" / "prompts" / "python-assistant.md", harness="pi_agent"
     )
-    assert len(result.fragments) == 8
-    assert result.version == "0.1.1"
+    assert len(result.fragments) == 9
+    assert "built_in_tools" in result.rendered_fragments
+    assert "`read`: Read a file's contents" in result.content
+    assert result.version == "0.1.2"
     assert result.content.startswith(
         "<identity>\nYou are a Python coding agent for system_prompt_builder, "
         "running in pi_agent.\n"

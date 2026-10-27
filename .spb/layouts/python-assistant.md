@@ -4,6 +4,8 @@
 
 <tools>
 {{{fragments.tools}}}
+
+{{{fragments.built_in_tools}}}
 </tools>
 
 <rules>

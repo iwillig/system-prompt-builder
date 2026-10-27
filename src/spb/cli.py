@@ -12,7 +12,7 @@ from typing import Any
 import click
 import yaml
 
-from spb.compression import CompressionResult, compress_prompt
+from spb.compression import CompressionResult, compress_rendered_prompt
 from spb.evaluation import (
     compare_evaluation_runs,
     group_mean_scores,
@@ -133,7 +133,7 @@ def render(
         raise click.ClickException(str(error)) from error
 
     try:
-        compression = compress_prompt(result.content, compressor) if compress else None
+        compression = compress_rendered_prompt(result, compressor) if compress else None
     except ValueError as error:
         raise click.ClickException(str(error)) from error
 
@@ -281,7 +281,7 @@ def eval_compare(
             harness=harness,
             variables=_parse_variables(variable_pairs),
         )
-        compressed = compress_prompt(rendered.content, compressor)
+        compressed = compress_rendered_prompt(rendered, compressor)
         loaded_suite = load_evaluation_suite(suite)
         suite_sha256 = _sha256(suite.read_text(encoding="utf-8"))
         baseline = run_evaluation(

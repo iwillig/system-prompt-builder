@@ -100,6 +100,8 @@ fragment alias, source path, and digest.
    * - ``--compress``
      - Disabled
      - Write a compressed prompt artifact in addition to the full prompt.
+       Fragment-based prompts compress only ``compressible_fragments``
+       aliases and require that key in the prompt's front matter.
    * - ``--compressor {none,llmlingua}``
      - ``llmlingua``
      - Select the compressor used with ``--compress``.

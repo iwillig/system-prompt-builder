@@ -135,7 +135,8 @@ The source package separates these responsibilities:
    their layout slot validation, built on the ``sloppy-xml`` parser.
 
 ``spb.compression``
-   Optional prompt compression.
+   Optional prompt compression, including per-fragment compression of the
+   aliases a prompt lists under ``compressible_fragments``.
 
 ``spb.evaluation``
    Suite loading, direct model calls, DeepEval scoring, result artifacts, and

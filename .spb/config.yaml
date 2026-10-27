@@ -4,7 +4,41 @@ support_harness:
 - pi_agent
 tool_provider_metadata:
   pi_agent:
-    tools: []
+    tools:
+    - name: read
+      summary: Read a file's contents, including text and supported images.
+    - name: write
+      summary: Create or overwrite a file with new content.
+    - name: edit
+      summary: Apply exact, targeted replacements inside one file.
+    - name: bash
+      summary: Execute a shell command in the project and return its output.
+    - name: grep
+      summary: Search file contents for a pattern across the project.
+    - name: find
+      summary: Search for files by glob pattern across the project.
+    - name: ls
+      summary: List a directory's entries.
+    - name: fetch
+      summary: Fetch a web URL as readable text.
+    - name: codemode
+      summary: Run JavaScript that calls the agent's other tools in one script.
+    - name: ask_user
+      summary: Ask the user a structured question with optional choices.
+    - name: memory_search
+      summary: Search persistent memory across sessions.
+    - name: memory_add
+      summary: Save a durable memory entry for future sessions.
+    - name: session_search
+      summary: Search past conversation sessions for context.
+    - name: skill_manage
+      summary: Create, view, update, or delete reusable procedural skills.
+    - name: symbolic_parse
+      summary: Refresh and scan the project with Symbolic; report completeness.
+    - name: symbolic_query
+      summary: Prove a Prolog goal over the loaded Symbolic facts.
+    - name: browser
+      summary: Open and inspect web pages in a controlled browser session.
 skill_providers:
 - name: local
   type: local

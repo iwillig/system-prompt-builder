@@ -65,6 +65,13 @@ Front matter
    directories under ``.spb/fragments/``. Requires a layout and an empty
    prompt body. See `Reusable prompt fragments`_.
 
+``compressible_fragments``
+   Optional list of selected fragment aliases that may be compressed with
+   ``--compress``. Required for fragment-based prompts that use
+   ``--compress``; each listed alias must also appear under ``fragments``.
+   Compressing an unlisted fragment is rejected, so identity and safety text
+   stays byte-identical.
+
 Reusable prompt fragments
 -------------------------
 
@@ -101,14 +108,34 @@ Its separate layout chooses the placement:
    </identity>
 
 The renderer first renders template-mode fragment text with ``project`` from
-``.spb/config.yaml``, harness, tools, and declared variables. Literal-mode text is not interpolated. It then renders
-the layout with only the ``fragments`` mapping. A layout must use each selected
-alias at least once, may repeat one, and may not reference an unselected alias.
-Use triple-brace slots to avoid HTML-escaping Markdown. The renderer removes
-one trailing newline from each rendered fragment so the layout owns the
-whitespace around it. The manifest records each selected alias, source path,
-rendering mode, and SHA-256 digest. Existing ``skills:`` references still append skill text;
+``.spb/config.yaml``, harness, tools, and declared variables. Literal-mode
+text is not interpolated. It then renders the layout with only the
+``fragments`` mapping. A layout must use each selected alias at least once,
+may repeat one, and may not reference an unselected alias. Use triple-brace
+slots to avoid HTML-escaping Markdown. The renderer removes one trailing
+newline from each rendered fragment so the layout owns the whitespace around
+it. The manifest records each selected alias, source path, rendering mode,
+and SHA-256 digest. Existing ``skills:`` references still append skill text;
 they do not import or export skill packages.
+
+Compressing selected fragments
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prompt compression is opt-in per alias. Add the eligible aliases to the
+prompt's front matter:
+
+.. code-block:: yaml
+
+   compressible_fragments: [rules, examples]
+
+With ``--compress``, only the listed fragments are compressed. Every other
+fragment, the layout, and appended skill text keep their exact bytes, so
+identity and safety guidance cannot be altered by compression. Each listed
+alias must also appear under ``fragments``. Static validation rejects
+unknown, duplicate, or empty entries, and a compressor that returns an empty
+fragment fails instead of writing it. Prompts without ``fragments`` keep the
+whole-prompt compression behavior; a fragment-based prompt without
+``compressible_fragments`` fails when ``--compress`` is used.
 
 Sectioned prompts
 ------------------
@@ -291,6 +318,13 @@ With ``--compress``, it also writes:
 
    build/pi_agent/coder.compressed.md
 
+For a fragment-based prompt, only aliases listed under
+``compressible_fragments`` are compressed; every other fragment, the layout,
+and appended skill text keep their exact bytes. The compressed artifact keeps
+the same layout structure. Prompts without ``fragments`` keep the previous
+whole-prompt behavior. An empty compression result for a fragment is
+rejected instead of written.
+
 The manifest records:
 
 * prompt name and version;
@@ -302,7 +336,9 @@ The manifest records:
 * resolved skill references, paths, and content digests;
 * selected fragment aliases, source paths, content digests, and rendering modes;
 * layout path and content digest when a layout is used;
-* compression method, settings, and digest when compression is enabled.
+* compression method, settings, and digest when compression is enabled;
+  for fragment compression, the settings also record the compressed scope
+  and each alias's input and output digests.
 
 Variable values are omitted when their names contain ``password``, ``secret``,
 ``token``, or ``key``. The manifest records those names under

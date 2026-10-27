@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Any
+
+from spb.rendering import RenderedPrompt, compose_fragment_content
 
 
 @dataclass(frozen=True)
@@ -22,6 +25,42 @@ def compress_prompt(content: str, compressor: str) -> CompressionResult:
     if compressor == "llmlingua":
         return _compress_with_llmlingua(content)
     raise ValueError(f"Unsupported compressor: {compressor}")
+
+
+def compress_rendered_prompt(
+    prompt: RenderedPrompt, compressor: str
+) -> CompressionResult:
+    """Compress selected fragments, or the whole body for legacy prompts."""
+    if not prompt.fragments:
+        return compress_prompt(prompt.content, compressor)
+    if not prompt.compressible_fragments:
+        raise ValueError(
+            "Fragment prompt requires compressible_fragments for compression"
+        )
+
+    values = prompt.rendered_fragments.copy()
+    details: list[dict[str, Any]] = []
+    for alias in prompt.compressible_fragments:
+        original = values[alias]
+        compressed = compress_prompt(original, compressor)
+        if not compressed.content.strip():
+            raise ValueError(f"Compressor returned empty fragment: {alias}")
+        values[alias] = compressed.content
+        details.append(
+            {
+                "alias": alias,
+                "input_sha256": hashlib.sha256(original.encode("utf-8")).hexdigest(),
+                "output_sha256": hashlib.sha256(
+                    compressed.content.encode("utf-8")
+                ).hexdigest(),
+                "settings": compressed.settings,
+            }
+        )
+    return CompressionResult(
+        content=compose_fragment_content(prompt, values),
+        compressor=compressor,
+        settings={"scope": "selected_fragments", "fragments": details},
+    )
 
 
 def _compress_with_llmlingua(content: str) -> CompressionResult:

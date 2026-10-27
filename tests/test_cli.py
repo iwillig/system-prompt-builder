@@ -724,3 +724,63 @@ def test_render_rejects_project_variable_override(tmp_path: Path) -> None:
     )
     assert result.exit_code != 0
     assert "Reserved --var name: project" in result.output
+
+
+def test_render_compresses_only_declared_fragment_aliases(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    prompt = tmp_path / ".spb" / "prompts" / "project-assistant.md"
+    prompt.write_text(
+        prompt.read_text(encoding="utf-8").replace(
+            "skills: []", "compressible_fragments: [instructions]\nskills: []"
+        ),
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        cli,
+        [
+            "render",
+            str(prompt),
+            "--harness",
+            "pi_agent",
+            "--project-root",
+            str(tmp_path),
+            "--compress",
+            "--compressor",
+            "none",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    output = tmp_path / "build" / "pi_agent" / "project-assistant.md"
+    assert output.with_suffix(".compressed.md").read_text() == output.read_text()
+    manifest = yaml.safe_load(output.with_suffix(".manifest.yaml").read_text())
+    assert manifest["compression"]["settings"]["scope"] == "selected_fragments"
+    assert [
+        entry["alias"] for entry in manifest["compression"]["settings"]["fragments"]
+    ] == ["instructions"]
+
+
+def test_render_rejects_fragment_compression_without_opt_in(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    result = runner.invoke(
+        cli,
+        [
+            "render",
+            str(tmp_path / ".spb" / "prompts" / "project-assistant.md"),
+            "--harness",
+            "pi_agent",
+            "--project-root",
+            str(tmp_path),
+            "--compress",
+            "--compressor",
+            "none",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "compressible_fragments" in result.output
+    assert not (tmp_path / "build" / "pi_agent" / "project-assistant.md").exists()
