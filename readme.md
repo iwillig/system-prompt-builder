@@ -1,12 +1,13 @@
 # System Prompt Builder
 
 System Prompt Builder (`spb`) composes reproducible, versioned system prompts
-from Markdown, reusable skills, template variables, and harness-specific tool
-metadata.
+from reusable Markdown fragments, skills, template variables, and
+harness-specific tool metadata.
 
 It can:
 
 - validate prompt projects;
+- compose reusable fragments through a separate layout;
 - render prompts for a selected agent harness;
 - resolve local and commit-pinned Git skill providers;
 - record prompt, skill, variable, and output provenance in YAML manifests;
@@ -107,8 +108,10 @@ A project has four main inputs:
 1. `.spb/config.yaml` defines supported harnesses, tool metadata, and skill
    providers.
 2. `.spb/prompts/*.md` contains versioned prompt sources with YAML front matter.
-3. Skill providers supply reusable Markdown instructions.
-4. Repeatable `--var NAME=VALUE` options provide declared template values.
+3. `.spb/fragments/` contains reusable instructions selected by system prompts;
+   `.spb/layouts/` places them in the final text.
+4. Skill providers supply Markdown instructions for eager inclusion.
+5. Repeatable `--var NAME=VALUE` options provide declared template values.
 
 A system prompt can select reusable instruction bundles under
 `.spb/fragments/` and bind them to named `fragments` aliases. Its separate

@@ -11,6 +11,15 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Added `just install-dev` to run the editable checkout as `spb` from any
   directory, without keeping a separate pipx copy on the same command name.
+- System prompts can select reusable fragments and place them through a
+  separate layout. The manifest records each fragment's source and digest.
+- Template-mode fragments can use `{{project}}` to read `project_name` from
+  project configuration.
+
+### Changed
+
+- `spb init` now creates a starter prompt with a fragment and layout.
+- The Python assistant prompt uses the configured project name in its identity.
 
 ## [0.3.0] - 2026-10-27
 

@@ -54,10 +54,12 @@ Initialize the current repository:
    Initialized System Prompt Builder project in /path/to/example
      .spb/config.yaml
      .spb/prompts/project-assistant.md
+     .spb/layouts/project-assistant.md
+     .spb/fragments/project_instructions/FRAGMENT.md
      .spb/skills/local/
 
-The starter project uses ``pi_agent``, contains a valid prompt with no required
-variables, and includes a local skill directory. See :doc:`initialization` for
+The starter project uses ``pi_agent``, contains a valid fragment-based prompt
+with no required variables, and includes a local skill directory. See :doc:`initialization` for
 the generated contents, custom harness selection, and overwrite protection.
 
 Validate and render
@@ -79,8 +81,8 @@ Render the prompt for Pi:
 
 The command also writes
 ``build/pi_agent/project-assistant.manifest.yaml``. The manifest identifies the
-prompt version, source and output hashes, selected harness, variables, and
-resolved skills.
+prompt version, source and output hashes, selected harness, fragment sources,
+variables, and resolved skills.
 
 Use the prompt with Pi
 ----------------------
@@ -98,15 +100,17 @@ Start Pi from the project root:
 
    $ pi --approve
 
-Pi reads ``.pi/SYSTEM.md`` after project trust is granted. Edit the source
-prompt, increase its semantic version, render it again, and update the link when
-you change the instructions.
+Pi reads ``.pi/SYSTEM.md`` after project trust is granted. Edit the prompt,
+fragment, or layout, increase the prompt's semantic version when its behavior
+changes, and render again. The link already points to the rebuilt artifact;
+you do not need to recreate it. If the output path exists with different
+content, use ``--replace-release`` to confirm replacement.
 
 Next steps
 ----------
 
 * Review initialization options in :doc:`initialization`.
 * Define reusable local or Git skills in :doc:`configuration`.
-* Add variables and Mustache sections with :doc:`prompts`.
+* Reuse fragments or add variables and inline sections with :doc:`prompts`.
 * Review every command and option in :doc:`cli`.
 * Test prompt behavior with :doc:`evaluation`.

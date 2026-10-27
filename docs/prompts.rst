@@ -1,10 +1,10 @@
 Prompt authoring
 ================
 
-A prompt is a Markdown file with YAML front matter. The front matter identifies
-the prompt release, imported skills, and declared template variables. The body
-is rendered with Mustache, either as one template, from named inline sections,
-or from reusable fragments selected by the system prompt.
+A system prompt is a Markdown file with YAML front matter. The front matter
+identifies its release, selected fragments, layout, imported skill text, and
+declared variables. Its body is one Mustache template, a set of legacy inline
+sections, or empty when the prompt selects reusable fragments.
 
 Prompt format
 -------------
@@ -100,14 +100,14 @@ Its separate layout chooses the placement:
    {{{fragments.identity}}}
    </identity>
 
-The renderer first renders template-mode fragment text with harness, tools,
-and declared variables. Literal-mode text is not interpolated. It then renders
+The renderer first renders template-mode fragment text with ``project`` from
+``.spb/config.yaml``, harness, tools, and declared variables. Literal-mode text is not interpolated. It then renders
 the layout with only the ``fragments`` mapping. A layout must use each selected
 alias at least once, may repeat one, and may not reference an unselected alias.
 Use triple-brace slots to avoid HTML-escaping Markdown. The renderer removes
 one trailing newline from each rendered fragment so the layout owns the
 whitespace around it. The manifest records each selected alias, source path,
-and SHA-256 digest. Existing ``skills:`` references still append skill text;
+rendering mode, and SHA-256 digest. Existing ``skills:`` references still append skill text;
 they do not import or export skill packages.
 
 Sectioned prompts
@@ -268,11 +268,12 @@ Use semantic versions to identify intended prompt behavior:
   harness contract.
 
 The version does not uniquely identify rendered bytes. The manifest also
-records source, skill, and rendered SHA-256 digests.
+records source, layout, fragment, skill, and rendered SHA-256 digests.
 
-If an existing artifact has the same prompt name, version, and harness but a
-different rendered digest, rendering fails. Increase the prompt version, or use
-``--replace-release`` when replacing the artifact is intentional.
+An existing output path with a different rendered digest requires
+``--replace-release`` even when the prompt version changes. Increase the
+version when prompt behavior changes, then use that flag to confirm replacing
+the existing file. An idempotent render with the same digest does not need it.
 
 Artifact layout
 ---------------
@@ -299,6 +300,8 @@ The manifest records:
 * visible template variables;
 * names of redacted variables;
 * resolved skill references, paths, and content digests;
+* selected fragment aliases, source paths, content digests, and rendering modes;
+* layout path and content digest when a layout is used;
 * compression method, settings, and digest when compression is enabled.
 
 Variable values are omitted when their names contain ``password``, ``secret``,

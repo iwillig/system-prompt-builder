@@ -1,5 +1,8 @@
 # Research: prompt fragments, compositions, and skills
 
+This is a research snapshot from before fragment composition was implemented.
+For current behavior, see [Prompt authoring](../prompts.rst).
+
 ## Conclusion
 
 Model a system prompt as an identified composition of ordered prompt fragments. Keep a skill separate from an eagerly inserted fragment: an agent skill is a discoverable package that can be loaded on demand, while SPB currently appends the entire text of a selected skill to its rendered prompt. The relationship between a fragment and an exportable skill is a product decision, not an equivalence established by the source material. [SPB renderer][spb-renderer] [SPB CLI][spb-cli] [Agent Skills specification][agent-skills] [Anthropic skills overview][anthropic-skills]

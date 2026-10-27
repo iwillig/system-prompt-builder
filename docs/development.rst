@@ -127,12 +127,12 @@ Implementation boundaries
 The source package separates these responsibilities:
 
 ``spb.rendering``
-   Configuration loading, prompt parsing, variable resolution, skill provider
-   resolution, and prompt composition.
+   Configuration loading, prompt parsing, fragment resolution, variable
+   resolution, skill provider resolution, and prompt composition.
 
 ``spb.sections``
-   Section extraction from pseudo-XML prompt bodies and layout slot validation,
-   built on the ``sloppy-xml`` parser.
+   Extraction of legacy inline sections from pseudo-XML prompt bodies and
+   their layout slot validation, built on the ``sloppy-xml`` parser.
 
 ``spb.compression``
    Optional prompt compression.
@@ -148,5 +148,8 @@ The source package separates these responsibilities:
 ``spb.release_notes``
    Changelog section extraction for GitHub release notes.
 
-Markdown with YAML front matter remains the prompt source format. A body with
-a declared ``layout`` is parsed into sections; see :doc:`prompts`.
+System prompts use Markdown with YAML front matter. When front matter selects
+``fragments``, the prompt body is empty and the layout receives rendered
+fragment values. Without ``fragments``, a prompt with a layout uses inline
+sections; a prompt without a layout renders its body directly. See
+:doc:`prompts`.

@@ -2,7 +2,7 @@ System Prompt Builder
 =====================
 
 System Prompt Builder, or ``spb``, composes reproducible, versioned system
-prompts from Markdown, reusable skills, template variables, and
+prompts from reusable Markdown fragments, skills, template variables, and
 harness-specific tool metadata.
 
 Use it to validate prompt projects, render prompt artifacts, record build
