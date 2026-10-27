@@ -12,10 +12,10 @@ the prompt should be told to use.
 
 .. code-block:: yaml
 
-   support-harness:
+   support_harness:
      - eca
 
-   tool-provider-metadata:
+   tool_provider_metadata:
      eca:
        tools: []
 

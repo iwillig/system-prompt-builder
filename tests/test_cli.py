@@ -1,6 +1,7 @@
 import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 from click.testing import CliRunner
 
@@ -13,6 +14,17 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
 
     result = runner.invoke(cli, ["init", str(project_root)])
     validation = runner.invoke(cli, ["validate", "--project-root", str(project_root)])
+    rendering = runner.invoke(
+        cli,
+        [
+            "render",
+            str(project_root / "prompts" / "project-assistant.md"),
+            "--harness",
+            "pi_agent",
+            "--project-root",
+            str(project_root),
+        ],
+    )
 
     config = yaml.safe_load(
         (project_root / ".spb" / "config.yaml").read_text(encoding="utf-8")
@@ -22,13 +34,15 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     )
     assert result.exit_code == 0
     assert "Initialized System Prompt Builder project" in result.output
-    assert config["project-name"] == "example"
-    assert config["support-harness"] == ["pi-agent"]
-    assert config["skill-providers"][0]["path"] == "skills/local"
+    assert config["project_name"] == "example"
+    assert config["support_harness"] == ["pi_agent"]
+    assert config["skill_providers"][0]["path"] == "skills/local"
     assert "running in {{harness.name}}" in prompt
     assert (project_root / "skills" / "local").is_dir()
     assert validation.exit_code == 0
     assert "Validated 1 prompt(s)." in validation.output
+    assert rendering.exit_code == 0
+    assert (project_root / "build" / "pi_agent" / "project-assistant.md").is_file()
 
 
 def test_init_command_supports_a_custom_harness(tmp_path: Path) -> None:
@@ -40,8 +54,19 @@ def test_init_command_supports_a_custom_harness(tmp_path: Path) -> None:
         (tmp_path / ".spb" / "config.yaml").read_text(encoding="utf-8")
     )
     assert result.exit_code == 0
-    assert config["support-harness"] == ["eca"]
-    assert config["tool-provider-metadata"] == {"eca": {"tools": []}}
+    assert config["support_harness"] == ["eca"]
+    assert config["tool_provider_metadata"] == {"eca": {"tools": []}}
+
+
+@pytest.mark.parametrize("harness", ["pi-agent", "piAgent"])
+def test_init_requires_snake_case_harness(tmp_path: Path, harness: str) -> None:
+    from spb.cli import cli
+
+    result = CliRunner().invoke(cli, ["init", str(tmp_path), "--harness", harness])
+
+    assert result.exit_code != 0
+    assert "snake_case" in result.output
+    assert not (tmp_path / ".spb").exists()
 
 
 def test_init_command_refuses_to_overwrite_managed_files(tmp_path: Path) -> None:
@@ -59,6 +84,57 @@ def test_init_command_refuses_to_overwrite_managed_files(tmp_path: Path) -> None
     assert not (tmp_path / "prompts").exists()
 
 
+@pytest.mark.parametrize(
+    "invalid_config",
+    [
+        "support-harness: [pi_agent]",
+        "supportHarness: [pi_agent]",
+        "support_harness: [pi-agent]",
+        "support_harness: [piAgent]",
+        "tool_provider_metadata: {pi-agent: {tools: []}}",
+        "skill_providers: [{name: local, type: git, skill-root: skills}]",
+    ],
+)
+def test_validate_rejects_non_snake_case_configuration(
+    tmp_path: Path, invalid_config: str
+) -> None:
+    from spb.cli import cli
+
+    (tmp_path / ".spb").mkdir()
+    (tmp_path / ".spb" / "config.yaml").write_text(
+        "version: 1\nsupport_harness: [pi_agent]\n"
+        "tool_provider_metadata: {pi_agent: {tools: []}}\n"
+        "skill_providers: []\n" + invalid_config + "\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(cli, ["validate", "--project-root", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert "snake_case" in result.output
+
+
+@pytest.mark.parametrize("name", ["projectName", "project-name"])
+def test_validate_rejects_non_snake_case_prompt_variables(
+    tmp_path: Path, name: str
+) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    prompt_path = tmp_path / "prompts" / "project-assistant.md"
+    prompt_path.write_text(
+        "---\nname: Assistant\nversion: 1.0.0\nvariables:\n"
+        f"  {name}:\n    required: true\n---\nHello.\n",
+        encoding="utf-8",
+    )
+
+    result = runner.invoke(cli, ["validate", "--project-root", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert "snake_case" in result.output
+
+
 def test_render_command_writes_a_harness_specific_artifact(tmp_path: Path) -> None:
     from spb.cli import cli
 
@@ -66,12 +142,12 @@ def test_render_command_writes_a_harness_specific_artifact(tmp_path: Path) -> No
     (tmp_path / ".spb" / "config.yaml").write_text(
         """\
 version: 1
-support-harness:
-  - pi-agent
-tool-provider-metadata:
-  pi-agent:
+support_harness:
+  - pi_agent
+tool_provider_metadata:
+  pi_agent:
     tools: []
-skill-providers:
+skill_providers:
   - name: local
     type: local
     path: skills
@@ -104,7 +180,7 @@ You are a coding agent for {{{project_name}}}.
             "render",
             str(prompt_path),
             "--harness",
-            "pi-agent",
+            "pi_agent",
             "--project-root",
             str(tmp_path),
             "--var",
@@ -112,7 +188,7 @@ You are a coding agent for {{{project_name}}}.
         ],
     )
 
-    output_path = tmp_path / "build" / "pi-agent" / "coder.md"
+    output_path = tmp_path / "build" / "pi_agent" / "coder.md"
     manifest_path = output_path.with_suffix(".manifest.yaml")
     assert result.exit_code == 0
     assert output_path.read_text(encoding="utf-8") == (
@@ -135,12 +211,12 @@ def test_validate_rejects_a_prompt_without_a_semantic_version(tmp_path: Path) ->
     (tmp_path / ".spb" / "config.yaml").write_text(
         """\
 version: 1
-support-harness:
-  - pi-agent
-tool-provider-metadata:
-  pi-agent:
+support_harness:
+  - pi_agent
+tool_provider_metadata:
+  pi_agent:
     tools: []
-skill-providers: []
+skill_providers: []
 """,
         encoding="utf-8",
     )
@@ -170,12 +246,12 @@ def test_validate_accepts_runtime_required_variables(tmp_path: Path) -> None:
     (tmp_path / ".spb" / "config.yaml").write_text(
         """\
 version: 1
-support-harness:
-  - pi-agent
-tool-provider-metadata:
-  pi-agent:
+support_harness:
+  - pi_agent
+tool_provider_metadata:
+  pi_agent:
     tools: []
-skill-providers: []
+skill_providers: []
 """,
         encoding="utf-8",
     )
@@ -208,11 +284,11 @@ def test_render_rejects_changed_content_for_an_existing_release(tmp_path: Path) 
     (tmp_path / ".spb" / "config.yaml").write_text(
         """\
 version: 1
-support-harness: [pi-agent]
-tool-provider-metadata:
-  pi-agent:
+support_harness: [pi_agent]
+tool_provider_metadata:
+  pi_agent:
     tools: []
-skill-providers: []
+skill_providers: []
 """,
         encoding="utf-8",
     )
@@ -227,7 +303,7 @@ skill-providers: []
         "render",
         str(prompt_path),
         "--harness",
-        "pi-agent",
+        "pi_agent",
         "--project-root",
         str(tmp_path),
     ]
@@ -266,16 +342,16 @@ def test_render_resolves_pinned_git_skill_and_writes_lockfile(tmp_path: Path) ->
     (tmp_path / ".spb" / "config.yaml").write_text(
         f"""\
 version: 1
-support-harness: [pi-agent]
-tool-provider-metadata:
-  pi-agent:
+support_harness: [pi_agent]
+tool_provider_metadata:
+  pi_agent:
     tools: []
-skill-providers:
+skill_providers:
   - name: team
     type: git
     gitrepo: {repository.as_uri()}
     revision: {revision}
-    skill-root: skills
+    skill_root: skills
 """,
         encoding="utf-8",
     )
@@ -293,7 +369,7 @@ skill-providers:
             "render",
             str(prompt_path),
             "--harness",
-            "pi-agent",
+            "pi_agent",
             "--project-root",
             str(tmp_path),
         ],
@@ -304,7 +380,7 @@ skill-providers:
     )
     assert result.exit_code == 0
     assert "Use strict TypeScript." in (
-        tmp_path / "build" / "pi-agent" / "coder.md"
+        tmp_path / "build" / "pi_agent" / "coder.md"
     ).read_text(encoding="utf-8")
     assert lockfile["providers"]["team"]["revision"] == revision
     assert lockfile["providers"]["team"]["skills"][0]["reference"] == "team/typescript"
@@ -317,11 +393,11 @@ def test_render_with_none_compressor_writes_compressed_artifact(tmp_path: Path) 
     (tmp_path / ".spb" / "config.yaml").write_text(
         """\
 version: 1
-support-harness: [pi-agent]
-tool-provider-metadata:
-  pi-agent:
+support_harness: [pi_agent]
+tool_provider_metadata:
+  pi_agent:
     tools: []
-skill-providers: []
+skill_providers: []
 """,
         encoding="utf-8",
     )
@@ -338,7 +414,7 @@ skill-providers: []
             "render",
             str(prompt_path),
             "--harness",
-            "pi-agent",
+            "pi_agent",
             "--project-root",
             str(tmp_path),
             "--compress",
@@ -347,7 +423,7 @@ skill-providers: []
         ],
     )
 
-    output_path = tmp_path / "build" / "pi-agent" / "coder.md"
+    output_path = tmp_path / "build" / "pi_agent" / "coder.md"
     compressed_path = output_path.with_suffix(".compressed.md")
     manifest = yaml.safe_load(
         output_path.with_suffix(".manifest.yaml").read_text(encoding="utf-8")
@@ -363,7 +439,7 @@ skill-providers: []
 def test_link_creates_a_symlink_to_a_compiled_artifact(tmp_path: Path) -> None:
     from spb.cli import cli
 
-    source = tmp_path / "build" / "pi-agent" / "coder.md"
+    source = tmp_path / "build" / "pi_agent" / "coder.md"
     source.parent.mkdir(parents=True)
     source.write_text("Compiled prompt.\n", encoding="utf-8")
     destination = tmp_path / "consumer" / ".agent" / "system.md"

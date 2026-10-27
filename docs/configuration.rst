@@ -11,15 +11,15 @@ Complete example
 .. code-block:: yaml
 
    version: 1
-   project-name: Example prompts
+   project_name: example_prompts
    author: Example team
 
-   support-harness:
-     - pi-agent
+   support_harness:
+     - pi_agent
      - eca
 
-   tool-provider-metadata:
-     pi-agent:
+   tool_provider_metadata:
+     pi_agent:
        tools:
          - name: read
            summary: Read a file from the project.
@@ -28,7 +28,7 @@ Complete example
      eca:
        tools: []
 
-   skill-providers:
+   skill_providers:
      - name: local
        type: local
        path: skills/local
@@ -37,30 +37,41 @@ Complete example
        type: git
        gitrepo: https://example.com/engineering/agent-skills.git
        revision: 0123456789abcdef0123456789abcdef01234567
-       skill-root: skills
+       skill_root: skills
 
 Configuration keys
 ------------------
 
+Configuration field names, harness identifiers, and provider names must use
+lowercase ``snake_case``. Free-text descriptions and paths keep their original
+spelling. For existing projects, rename ``project-name`` to
+``project_name``, ``support-harness`` to ``support_harness``,
+``tool-provider-metadata`` to ``tool_provider_metadata``,
+``skill-providers`` to ``skill_providers``, and ``skill-root`` to
+``skill_root``. Replace the harness name ``pi-agent`` with ``pi_agent``
+in configuration and in ``--harness`` arguments. Existing rendered artifacts
+under ``build/pi-agent/`` are not moved; render again to write
+``build/pi_agent/``.
+
 ``version``
    Configuration format version. The current format uses ``1``.
 
-``project-name``
+``project_name``
    Optional project metadata. It is not used during prompt rendering.
 
 ``author``
    Optional project metadata. It is not used during prompt rendering.
 
-``support-harness``
+``support_harness``
    Required non-empty list used by project validation to identify supported
    harnesses. Add matching tool metadata for every harness used for rendering.
 
-``tool-provider-metadata``
+``tool_provider_metadata``
    Required mapping from harness name to harness metadata. Each harness may
    define a ``tools`` list. Tool entries are passed to the Mustache rendering
    context without additional schema transformation.
 
-``skill-providers``
+``skill_providers``
    List of named local or Git providers. It may be empty or omitted when prompts
    do not import skills.
 
@@ -86,7 +97,7 @@ A local provider reads Markdown files from a project directory:
 
 .. code-block:: yaml
 
-   skill-providers:
+   skill_providers:
      - name: local
        type: local
        path: skills/local
@@ -112,12 +123,12 @@ A Git provider reads skills from a pinned repository revision:
 
 .. code-block:: yaml
 
-   skill-providers:
+   skill_providers:
      - name: team
        type: git
        gitrepo: https://example.com/engineering/agent-skills.git
        revision: 0123456789abcdef0123456789abcdef01234567
-       skill-root: skills
+       skill_root: skills
 
 Git provider keys are:
 
@@ -134,7 +145,7 @@ Git provider keys are:
    Required immutable hexadecimal commit SHA between 40 and 64 characters.
    Branches and tags are rejected.
 
-``skill-root``
+``skill_root``
    Directory containing Markdown skills inside the checked-out repository.
 
 Git providers are cached under ``.spb/cache/<provider-name>``. Rendering checks

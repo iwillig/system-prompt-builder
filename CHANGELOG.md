@@ -11,6 +11,13 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Added `spb init` to create a safe starter project for a selected harness.
 
+### Changed
+
+- Project configuration now requires snake_case keys, harness names, provider
+  names, and prompt variable names. Existing projects must rename those fields
+  and replace `pi-agent` with `pi_agent` in configuration and render commands.
+  New artifacts use `build/pi_agent/`; existing artifacts are not moved.
+
 ## [0.1.2] - 2026-10-26
 
 ### Added

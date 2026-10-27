@@ -36,7 +36,7 @@ created when needed. Initialization refuses to overwrite
      - ``.``
      - Repository or directory that will contain the prompt project.
    * - ``--harness HARNESS``
-     - ``pi-agent``
+     - ``pi_agent``
      - Initial harness name written to the project configuration.
 
 The command creates ``.spb/config.yaml``,

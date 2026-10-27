@@ -56,7 +56,7 @@ Initialize the current repository:
      prompts/project-assistant.md
      skills/local/
 
-The starter project uses ``pi-agent``, contains a valid prompt with no required
+The starter project uses ``pi_agent``, contains a valid prompt with no required
 variables, and includes a local skill directory. See :doc:`initialization` for
 the generated contents, custom harness selection, and overwrite protection.
 
@@ -74,11 +74,11 @@ Render the prompt for Pi:
 
 .. code-block:: console
 
-   $ spb render prompts/project-assistant.md --harness pi-agent
-   build/pi-agent/project-assistant.md
+   $ spb render prompts/project-assistant.md --harness pi_agent
+   build/pi_agent/project-assistant.md
 
 The command also writes
-``build/pi-agent/project-assistant.manifest.yaml``. The manifest identifies the
+``build/pi_agent/project-assistant.manifest.yaml``. The manifest identifies the
 prompt version, source and output hashes, selected harness, variables, and
 resolved skills.
 
@@ -89,7 +89,7 @@ Link the rendered artifact into Pi's project configuration:
 
 .. code-block:: console
 
-   $ spb link build/pi-agent/project-assistant.md .pi/SYSTEM.md
+   $ spb link build/pi_agent/project-assistant.md .pi/SYSTEM.md
    .pi/SYSTEM.md
 
 Start Pi from the project root:

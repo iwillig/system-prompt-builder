@@ -2,7 +2,7 @@ Initialize a project
 ====================
 
 ``spb init`` creates a minimal System Prompt Builder project in an existing or
-new directory. The command is non-interactive, defaults to the ``pi-agent``
+new directory. The command is non-interactive, defaults to the ``pi_agent``
 harness, and does not overwrite managed files.
 
 Create a project
@@ -40,19 +40,20 @@ The command creates this layout:
    skills/
      local/
 
-The configuration uses the directory name as ``project-name``, declares the
-selected harness, and provides an empty tool list:
+The configuration converts the directory name to snake_case for
+``project_name``, declares the selected harness, and provides an empty tool
+list:
 
 .. code-block:: yaml
 
    version: 1
-   project-name: example
-   support-harness:
-   - pi-agent
-   tool-provider-metadata:
-     pi-agent:
+   project_name: example
+   support_harness:
+   - pi_agent
+   tool_provider_metadata:
+     pi_agent:
        tools: []
-   skill-providers:
+   skill_providers:
    - name: local
      type: local
      path: skills/local
@@ -80,8 +81,8 @@ Use ``--harness`` to select another harness name:
 
    $ spb init --harness eca
 
-The selected name is written to ``support-harness`` and
-``tool-provider-metadata``. Add the harness's tool metadata to
+The selected name is written to ``support_harness`` and
+``tool_provider_metadata``. Add the harness's tool metadata to
 ``.spb/config.yaml`` before using tool sections in a prompt.
 
 Overwrite protection
@@ -105,8 +106,8 @@ After initialization, validate and render the starter prompt:
 
    $ spb validate
    Validated 1 prompt(s).
-   $ spb render prompts/project-assistant.md --harness pi-agent
-   build/pi-agent/project-assistant.md
+   $ spb render prompts/project-assistant.md --harness pi_agent
+   build/pi_agent/project-assistant.md
 
 Edit the configuration and prompt source to match the repository before using
 the generated artifact in an agent harness.

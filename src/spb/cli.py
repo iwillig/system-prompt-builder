@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import re
 import tempfile
 from dataclasses import replace
 from pathlib import Path
@@ -38,7 +39,7 @@ def cli() -> None:
 )
 @click.option(
     "--harness",
-    default="pi-agent",
+    default="pi_agent",
     show_default=True,
     help="Initial harness name.",
 )
@@ -512,8 +513,8 @@ def _parse_variables(variable_pairs: tuple[str, ...]) -> dict[str, str]:
         name, separator, value = pair.partition("=")
         if not separator or not name:
             raise ValueError("--var must use NAME=VALUE")
-        if not name.isidentifier():
-            raise ValueError(f"Invalid --var name: {name}")
+        if not re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name):
+            raise ValueError(f"--var name must use snake_case: {name}")
         if name in {"harness", "tools"}:
             raise ValueError(f"Reserved --var name: {name}")
         if name in variables:

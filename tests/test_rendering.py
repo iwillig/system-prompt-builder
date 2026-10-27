@@ -8,14 +8,14 @@ def test_render_prompt_composes_skills_and_harness_metadata(tmp_path: Path) -> N
     (tmp_path / ".spb" / "config.yaml").write_text(
         """\
 version: 1
-support-harness:
-  - pi-agent
-tool-provider-metadata:
-  pi-agent:
+support_harness:
+  - pi_agent
+tool_provider_metadata:
+  pi_agent:
     tools:
       - name: read
         summary: Read a file.
-skill-providers:
+skill_providers:
   - name: local
     type: local
     path: skills
@@ -43,10 +43,10 @@ You are running in {{harness.name}}.
         encoding="utf-8",
     )
 
-    result = render_prompt(tmp_path, prompt_path, harness="pi-agent")
+    result = render_prompt(tmp_path, prompt_path, harness="pi_agent")
 
     assert result.content == (
-        "You are running in pi-agent.\n"
+        "You are running in pi_agent.\n"
         "Use read: Read a file.\n\n"
         "Always explain review findings clearly.\n"
     )

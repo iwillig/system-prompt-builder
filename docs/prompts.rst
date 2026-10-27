@@ -50,8 +50,9 @@ Front matter
    appended after the rendered prompt body in the listed order.
 
 ``variables``
-   Optional mapping of variable declarations. Each declaration must contain
-   exactly one of ``required: true`` or ``default: <value>``.
+   Optional mapping of variable declarations. Variable names must use lowercase
+   ``snake_case``. Each declaration must contain exactly one of
+   ``required: true`` or ``default: <value>``.
 
 Template context
 ----------------
@@ -103,18 +104,18 @@ different rendered digest, rendering fails. Increase the prompt version, or use
 Artifact layout
 ---------------
 
-Rendering ``prompts/coder.md`` for ``pi-agent`` writes:
+Rendering ``prompts/coder.md`` for ``pi_agent`` writes:
 
 .. code-block:: text
 
-   build/pi-agent/coder.md
-   build/pi-agent/coder.manifest.yaml
+   build/pi_agent/coder.md
+   build/pi_agent/coder.manifest.yaml
 
 With ``--compress``, it also writes:
 
 .. code-block:: text
 
-   build/pi-agent/coder.compressed.md
+   build/pi_agent/coder.compressed.md
 
 The manifest records:
 

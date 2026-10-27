@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,8 +22,8 @@ class InitializedProject:
 def initialize_project(project_root: Path, *, harness: str) -> InitializedProject:
     """Create a minimal project without overwriting managed files."""
     normalized_harness = harness.strip()
-    if not normalized_harness:
-        raise ValueError("Harness name cannot be empty")
+    if not re.fullmatch(r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", normalized_harness):
+        raise ValueError("Harness name must use snake_case")
 
     root = project_root.resolve()
     config_path = root / ".spb" / "config.yaml"
@@ -38,12 +39,14 @@ def initialize_project(project_root: Path, *, harness: str) -> InitializedProjec
             f"Project already contains managed files: {relative_conflicts}"
         )
 
+    project_name = re.sub(r"[^a-z0-9]+", "_", root.name.lower()).strip("_")
+    project_name = re.sub(r"^[^a-z]+", "", project_name)
     config = {
         "version": 1,
-        "project-name": root.name or "System Prompt Project",
-        "support-harness": [normalized_harness],
-        "tool-provider-metadata": {normalized_harness: {"tools": []}},
-        "skill-providers": [{"name": "local", "type": "local", "path": "skills/local"}],
+        "project_name": project_name or "system_prompt_project",
+        "support_harness": [normalized_harness],
+        "tool_provider_metadata": {normalized_harness: {"tools": []}},
+        "skill_providers": [{"name": "local", "type": "local", "path": "skills/local"}],
     }
     prompt = """\
 ---

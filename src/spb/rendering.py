@@ -91,7 +91,40 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     if not isinstance(loaded, dict):
         raise ValueError(f"Expected a YAML mapping in {path}")
+    _validate_config_keys(loaded)
     return loaded
+
+
+def _validate_config_keys(config: dict[str, Any]) -> None:
+    """Reject legacy field names instead of silently ignoring them."""
+    for key, value in config.items():
+        if not isinstance(key, str) or not re.fullmatch(
+            r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", key
+        ):
+            raise ValueError(f"Configuration key must use snake_case: {key}")
+        if key == "tool_provider_metadata" and isinstance(value, dict):
+            for harness, metadata in value.items():
+                _validate_identifier(harness, "Harness name")
+                if isinstance(metadata, dict):
+                    _validate_config_keys(metadata)
+                    tools = metadata.get("tools")
+                    if isinstance(tools, list):
+                        for tool in tools:
+                            if isinstance(tool, dict):
+                                _validate_config_keys(tool)
+        if key == "skill_providers" and isinstance(value, list):
+            for provider in value:
+                if isinstance(provider, dict):
+                    _validate_config_keys(provider)
+                    if "name" in provider:
+                        _validate_identifier(provider["name"], "Provider name")
+
+
+def _validate_identifier(value: Any, label: str) -> None:
+    if not isinstance(value, str) or not re.fullmatch(
+        r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", value
+    ):
+        raise ValueError(f"{label} must use snake_case: {value}")
 
 
 def _read_prompt(path: Path) -> tuple[dict[str, Any], str]:
@@ -106,18 +139,19 @@ def _read_prompt(path: Path) -> tuple[dict[str, Any], str]:
 
 
 def _supported_harnesses(config: dict[str, Any]) -> list[str]:
-    harnesses = config.get("support-harness")
+    harnesses = config.get("support_harness")
     if not isinstance(harnesses, list) or not harnesses:
-        raise ValueError("Project configuration must define support-harness")
-    if not all(isinstance(harness, str) for harness in harnesses):
-        raise ValueError("support-harness must contain harness names")
+        raise ValueError("Project configuration must define support_harness")
+    for harness in harnesses:
+        _validate_identifier(harness, "Harness name")
     return harnesses
 
 
 def _tools_for_harness(config: dict[str, Any], harness: str) -> list[dict[str, str]]:
-    metadata = config.get("tool-provider-metadata")
+    metadata = config.get("tool_provider_metadata")
     if not isinstance(metadata, dict) or not isinstance(metadata.get(harness), dict):
         raise ValueError(f"Unsupported harness: {harness}")
+    _validate_identifier(harness, "Harness name")
     tools = metadata[harness].get("tools", [])
     if not isinstance(tools, list) or not all(isinstance(tool, dict) for tool in tools):
         raise ValueError(f"Harness {harness} has invalid tool metadata")
@@ -139,9 +173,9 @@ def _resolve_skill(
     provider_name, separator, skill_name = reference.partition("/")
     if not separator or not provider_name or not skill_name:
         raise ValueError(f"Invalid skill reference: {reference}")
-    providers = config.get("skill-providers")
+    providers = config.get("skill_providers")
     if not isinstance(providers, list):
-        raise ValueError("Project configuration must define skill-providers")
+        raise ValueError("Project configuration must define skill_providers")
     provider = next(
         (
             candidate
@@ -180,10 +214,10 @@ def _resolve_git_skill(
 ) -> ResolvedSkill:
     gitrepo = provider.get("gitrepo")
     revision = provider.get("revision")
-    skill_root = provider.get("skill-root")
+    skill_root = provider.get("skill_root")
     if not isinstance(gitrepo, str) or not isinstance(skill_root, str):
         raise ValueError(
-            f"Git provider {provider_name} must define gitrepo and skill-root"
+            f"Git provider {provider_name} must define gitrepo and skill_root"
         )
     if not isinstance(revision, str) or not re.fullmatch(
         r"[0-9a-fA-F]{40,64}", revision
@@ -248,9 +282,9 @@ def _variable_declarations(metadata: dict[str, Any]) -> dict[str, dict[str, Any]
     reserved = {"harness", "tools"}
     for name, declaration in declarations.items():
         if not isinstance(name, str) or not re.fullmatch(
-            r"[A-Za-z_][A-Za-z0-9_]*", name
+            r"[a-z][a-z0-9]*(?:_[a-z0-9]+)*", name
         ):
-            raise ValueError(f"Invalid prompt variable name: {name}")
+            raise ValueError(f"Prompt variable name must use snake_case: {name}")
         if name in reserved:
             raise ValueError(f"Prompt variable name is reserved: {name}")
         if not isinstance(declaration, dict):

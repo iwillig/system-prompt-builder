@@ -80,20 +80,20 @@ Validate and render the prompt:
 
 ```bash
 spb validate
-spb render prompts/project-assistant.md --harness pi-agent
+spb render prompts/project-assistant.md --harness pi_agent
 ```
 
 The render command writes:
 
 ```text
-build/pi-agent/project-assistant.md
-build/pi-agent/project-assistant.manifest.yaml
+build/pi_agent/project-assistant.md
+build/pi_agent/project-assistant.manifest.yaml
 ```
 
 Link the rendered prompt into a Pi project:
 
 ```bash
-spb link build/pi-agent/project-assistant.md .pi/SYSTEM.md
+spb link build/pi_agent/project-assistant.md .pi/SYSTEM.md
 pi --approve
 ```
 

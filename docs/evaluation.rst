@@ -111,14 +111,14 @@ Validate prompt and suite wiring without a model call:
 
 .. code-block:: console
 
-   $ spb eval run prompts/coder.md --harness pi-agent \
+   $ spb eval run prompts/coder.md --harness pi_agent \
        --suite evals/coder.yaml --dry-run
 
 Run the suite:
 
 .. code-block:: console
 
-   $ spb eval run prompts/coder.md --harness pi-agent \
+   $ spb eval run prompts/coder.md --harness pi_agent \
        --suite evals/coder.yaml --fail-under 0.75
 
 The result records prompt and suite digests, model identity, visible variables,
@@ -132,7 +132,7 @@ Compare the full prompt with a compressed variant:
 
 .. code-block:: console
 
-   $ spb eval compare prompts/coder.md --harness pi-agent \
+   $ spb eval compare prompts/coder.md --harness pi_agent \
        --suite evals/coder.yaml --compressor llmlingua \
        --max-score-drop 0.05
 
@@ -146,7 +146,7 @@ Benchmark one prompt and require a minimum score for a named group:
 
 .. code-block:: console
 
-   $ spb benchmark run prompts/coder-1.1.0.md --harness pi-agent \
+   $ spb benchmark run prompts/coder-1.1.0.md --harness pi_agent \
        --suite evals/coder.yaml --fail-under 0.75 \
        --min-group-score safety=0.9
 
@@ -156,7 +156,7 @@ Compare two prompt source versions:
 
    $ spb benchmark compare \
        prompts/coder-1.0.0.md prompts/coder-1.1.0.md \
-       --harness pi-agent --suite evals/coder.yaml \
+       --harness pi_agent --suite evals/coder.yaml \
        --max-score-drop 0.02 \
        --max-group-score-drop safety=0.01
 
