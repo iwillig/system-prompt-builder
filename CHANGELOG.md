@@ -7,9 +7,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-26
+
 ### Added
 
 - Added `spb init` to create a safe starter project for a selected harness.
+- Added a maintained changelog as the source for GitHub release notes.
 
 ### Changed
 
@@ -17,15 +20,6 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   names, and prompt variable names. Existing projects must rename those fields
   and replace `pi-agent` with `pi_agent` in configuration and render commands.
   New artifacts use `build/pi_agent/`; existing artifacts are not moved.
-
-## [0.1.2] - 2026-10-26
-
-### Added
-
-- Added a maintained changelog as the source for GitHub release notes.
-
-### Changed
-
 - Published installation guidance now covers PyPI installation and upgrades
   with both `uv` and `pipx`.
 
@@ -56,7 +50,7 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added direct-model DeepEval suites and versioned prompt benchmarks.
 - Added symbolic linking for generated prompt artifacts.
 
-[Unreleased]: https://github.com/iwillig/system-prompt-builder/compare/v0.1.2...HEAD
-[0.1.2]: https://github.com/iwillig/system-prompt-builder/compare/v0.1.1...v0.1.2
+[Unreleased]: https://github.com/iwillig/system-prompt-builder/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/iwillig/system-prompt-builder/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/iwillig/system-prompt-builder/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/iwillig/system-prompt-builder/tree/v0.1.0
