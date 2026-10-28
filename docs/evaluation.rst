@@ -34,6 +34,9 @@ directory; suite paths outside it are also supported.
      - type: g_eval
        name: Coding quality
        criteria: Identifies concrete bugs and explains their impact.
+       evaluation_steps:
+         - Check whether the answer names a concrete bug.
+         - Check whether the answer explains the bug's impact.
        threshold: 0.7
    tests:
      - name: reviews a function
@@ -48,8 +51,9 @@ Top-level keys
    Required ``llm`` model identifier used to generate each response.
 
 ``judge_model``
-   Required when any metric has type ``g_eval``. Use an independent ``llm``
-   model or alias so the generation model does not grade itself.
+   Required for all evaluation suites. Both ``answer_relevancy`` and ``g_eval``
+   use this ``llm`` model or alias for grading. Use an independent model so the
+   generation model does not grade itself.
 
 ``metrics``
    Required non-empty list of metric definitions.
@@ -78,6 +82,11 @@ Metric definitions
 
 ``criteria``
    Required natural-language grading criteria.
+
+``evaluation_steps``
+   Required non-empty list of grading steps. The same steps apply to every
+   case and repeat, so DeepEval does not generate new steps for each score.
+   Changing these steps changes the grading contract.
 
 ``threshold``
    Optional numeric pass threshold. The default is ``0.5``.

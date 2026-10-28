@@ -20,6 +20,7 @@ class MetricSpec:
     threshold: float | None
     name: str | None = None
     criteria: str | None = None
+    evaluation_steps: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -147,11 +148,11 @@ def load_evaluation_suite(path: Path) -> EvaluationSuite:
     if has_g_eval and any(case.expected_output is None for case in cases):
         raise ValueError("g_eval suites require expected_output for every test")
     judge_model = data.get("judge_model")
-    if has_g_eval and (not isinstance(judge_model, str) or not judge_model):
-        raise ValueError("g_eval suites require judge_model")
+    if not isinstance(judge_model, str) or not judge_model.strip():
+        raise ValueError("Evaluation suites require judge_model")
     return EvaluationSuite(
         model=model,
-        judge_model=judge_model if isinstance(judge_model, str) else None,
+        judge_model=judge_model,
         metrics=metrics,
         cases=cases,
     )
@@ -213,6 +214,8 @@ def run_evaluation(
             "optional dependency"
         ) from error
 
+    if not suite.judge_model:
+        raise ValueError("Evaluation suites require judge_model")
     model = llm.get_model(suite.model)
     judge = _llm_judge(llm, DeepEvalBaseLLM, suite.judge_model)
     results: list[dict[str, Any]] = []
@@ -434,13 +437,16 @@ def _build_metric(
     include_tool_trace: bool = False,
 ) -> Any:
     if spec.type == "answer_relevancy":
-        return answer_relevancy(threshold=spec.threshold)
+        return answer_relevancy(threshold=spec.threshold, model=judge)
+    if not spec.evaluation_steps:
+        raise ValueError("g_eval requires explicit evaluation_steps")
     evaluation_params = [params.INPUT, params.ACTUAL_OUTPUT, params.EXPECTED_OUTPUT]
     if include_tool_trace:
         evaluation_params.extend([params.TOOLS_CALLED, params.EXPECTED_TOOLS])
     return g_eval(
         name=spec.name or "G-Eval",
         criteria=spec.criteria or "",
+        evaluation_steps=list(spec.evaluation_steps),
         threshold=spec.threshold,
         model=judge,
         evaluation_params=evaluation_params,
@@ -457,11 +463,21 @@ def _metric(value: Any) -> MetricSpec:
     if metric_type == "answer_relevancy":
         return MetricSpec(type=metric_type, threshold=float(threshold))
     if metric_type == "g_eval":
+        steps = value.get("evaluation_steps")
+        if (
+            not isinstance(steps, list)
+            or not steps
+            or any(not isinstance(step, str) or not step.strip() for step in steps)
+        ):
+            raise ValueError(
+                "g_eval evaluation_steps must be a non-empty list of strings"
+            )
         return MetricSpec(
             type=metric_type,
             threshold=float(threshold),
             name=_required_string(value, "name"),
             criteria=_required_string(value, "criteria"),
+            evaluation_steps=tuple(steps),
         )
     raise ValueError(f"Unsupported DeepEval metric: {metric_type}")
 

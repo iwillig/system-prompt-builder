@@ -33,6 +33,9 @@ metrics:
   - type: g_eval
     name: Coding quality
     criteria: Identifies concrete bugs and explains their impact.
+    evaluation_steps:
+      - Check whether a concrete bug is named.
+      - Check whether its impact is explained.
 tests:
   - name: reviews a function
     input: Review this function for bugs.
@@ -46,6 +49,10 @@ tests:
     assert suite.model == "gpt-4o-mini"
     assert suite.judge_model == "local-judge"
     assert suite.metrics[1].type == "g_eval"
+    assert suite.metrics[1].evaluation_steps == (
+        "Check whether a concrete bug is named.",
+        "Check whether its impact is explained.",
+    )
     assert suite.cases[0].expected_output == "A concrete bug report."
     assert suite.cases[0].mock_tools == {}
     assert suite.cases[0].expected_tool_calls is None
@@ -58,6 +65,7 @@ def test_load_evaluation_suite_reads_mock_tool_expectations(tmp_path: Path) -> N
     suite_path.write_text(
         """\
 model: local
+judge_model: local-judge
 metrics:
   - type: answer_relevancy
 tests:
@@ -164,6 +172,8 @@ metrics:
   - type: g_eval
     name: Coding quality
     criteria: Identifies concrete bugs.
+    evaluation_steps:
+      - Check whether a concrete bug is named.
 tests:
   - name: reviews a function
     input: Review this function for bugs.
@@ -177,6 +187,82 @@ tests:
         assert "expected_output" in str(error)
     else:
         raise AssertionError("Expected suite validation to fail")
+
+
+def test_suite_requires_judge_for_answer_relevancy(tmp_path: Path) -> None:
+    from spb.evaluation import load_evaluation_suite
+
+    suite_path = tmp_path / "relevancy.yaml"
+    suite_path.write_text(
+        """\
+model: generator
+metrics:
+  - type: answer_relevancy
+tests:
+  - name: example
+    input: Answer the question.
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="require judge_model"):
+        load_evaluation_suite(suite_path)
+
+
+@pytest.mark.parametrize("steps", [None, [], [""], [2], "one step"])
+def test_g_eval_requires_valid_explicit_steps(tmp_path: Path, steps: object) -> None:
+    import yaml
+
+    from spb.evaluation import load_evaluation_suite
+
+    metric = {"type": "g_eval", "name": "quality", "criteria": "Check quality."}
+    if steps is not None:
+        metric["evaluation_steps"] = steps
+    suite_path = tmp_path / "steps.yaml"
+    suite_path.write_text(
+        yaml.safe_dump(
+            {
+                "model": "generator",
+                "judge_model": "judge",
+                "metrics": [metric],
+                "tests": [
+                    {"name": "example", "input": "Answer.", "expected_output": "Yes."}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="evaluation_steps"):
+        load_evaluation_suite(suite_path)
+
+
+def test_metric_builders_use_the_configured_judge_and_fixed_steps() -> None:
+    from spb.evaluation import MetricSpec, _build_metric
+
+    judge = object()
+    calls = []
+
+    def capture(**kwargs):
+        calls.append(kwargs)
+        return kwargs
+
+    class Params:
+        INPUT = "input"
+        ACTUAL_OUTPUT = "output"
+        EXPECTED_OUTPUT = "expected"
+
+    _build_metric(MetricSpec("answer_relevancy", 0.7), capture, capture, Params, judge)
+    steps = ("Check the required answer.",)
+    spec = MetricSpec("g_eval", 0.7, "quality", "Check quality.", steps)
+    _build_metric(spec, capture, capture, Params, judge)
+    _build_metric(spec, capture, capture, Params, judge)
+
+    assert calls[0] == {"threshold": 0.7, "model": judge}
+    assert calls[1]["model"] is judge
+    assert calls[1]["evaluation_steps"] == list(steps)
+    assert calls[2]["evaluation_steps"] == list(steps)
+    assert calls[1]["evaluation_steps"] is not calls[2]["evaluation_steps"]
 
 
 _JSON_ERROR = (

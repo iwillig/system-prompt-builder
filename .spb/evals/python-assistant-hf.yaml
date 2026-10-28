@@ -9,6 +9,10 @@ metrics:
       additions. Penalize missing requirements, invented evidence, claims beyond
       available evidence, or irrelevant verbosity that violates a requested
       format. Do not require exact wording.
+    evaluation_steps:
+      - Check whether the response gives the required answer for the test input.
+      - Check whether claims stay within the evidence in the input and reference answer.
+      - Check whether irrelevant details violate the requested format.
     threshold: 0.7
 tests:
   - name: reads before editing

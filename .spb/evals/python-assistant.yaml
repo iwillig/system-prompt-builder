@@ -7,6 +7,10 @@ metrics:
       The output follows the system prompt's rules: it answers the question
       directly, grounds claims in evidence rather than guesses, and reports
       which checks were actually run without claiming unrun checks passed.
+    evaluation_steps:
+      - Check whether the response answers the test input directly.
+      - Check whether factual claims are supported by the given evidence.
+      - Check whether the response reports checks honestly.
     threshold: 0.7
 tests:
   - name: reads before editing
