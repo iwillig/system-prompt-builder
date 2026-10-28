@@ -177,3 +177,60 @@ tests:
         assert "expected_output" in str(error)
     else:
         raise AssertionError("Expected suite validation to fail")
+
+
+_JSON_ERROR = (
+    "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model."
+)
+
+
+class _FlakyMetric:
+    """Fake metric whose measure() raises ValueError a fixed number of times."""
+
+    def __init__(self, fail_times: int, message: str) -> None:
+        self._fail_times = fail_times
+        self._message = message
+        self.attempts = 0
+
+    def measure(self, test_case: object) -> None:
+        self.attempts += 1
+        if self.attempts <= self._fail_times:
+            raise ValueError(self._message)
+
+
+def test_measure_retries_on_judge_json_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from spb.evaluation import _measure_metric_with_retry
+
+    monkeypatch.setattr("spb.evaluation._JUDGE_RETRY_DELAY_SECONDS", 0.0)
+    metric = _FlakyMetric(2, _JSON_ERROR)
+
+    _measure_metric_with_retry(metric, object())
+
+    assert metric.attempts == 3
+
+
+def test_measure_gives_up_after_max_attempts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from spb.evaluation import _JUDGE_MAX_ATTEMPTS, _measure_metric_with_retry
+
+    monkeypatch.setattr("spb.evaluation._JUDGE_RETRY_DELAY_SECONDS", 0.0)
+    metric = _FlakyMetric(999, _JSON_ERROR)
+
+    with pytest.raises(ValueError, match="invalid JSON"):
+        _measure_metric_with_retry(metric, object())
+
+    assert metric.attempts == _JUDGE_MAX_ATTEMPTS
+
+
+def test_measure_fails_fast_on_non_json_error() -> None:
+    from spb.evaluation import _measure_metric_with_retry
+
+    metric = _FlakyMetric(999, "some unrelated configuration problem")
+
+    with pytest.raises(ValueError, match="unrelated configuration"):
+        _measure_metric_with_retry(metric, object())
+
+    assert metric.attempts == 1

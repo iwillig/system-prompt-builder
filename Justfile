@@ -48,6 +48,18 @@ package-check: ci package
 run *args:
     pipenv run spb {{args}}
 
+# Preview a one-fragment drop without evaluation or compression model calls.
+fragment-ablate-plan alias="routing":
+    pipenv run spb eval ablate .spb/prompts/python-assistant.md --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent --mode drop --fragments {{quote(alias)}} --dry-run --max-case-generations 102
+
+# Preview LLMLingua rates locally, without evaluation endpoint calls.
+fragment-rate-plan alias="routing" rates="0.5,0.3":
+    pipenv run spb eval ablate .spb/prompts/python-assistant.md --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent --mode rate --fragments {{quote(alias)}} --rates {{quote(rates)}} --dry-run --max-case-generations 153
+
+# Run a bounded live drop evaluation; credentials must already be configured.
+fragment-ablate-live alias="routing":
+    pipenv run spb eval ablate .spb/prompts/python-assistant.md --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent --mode drop --fragments {{quote(alias)}} --repeats 3 --max-case-generations 102 --output "build/evals/fragment-ablation-$(date -u +%Y%m%dT%H%M%SZ).yaml"
+
 # Make this editable checkout the machine's default spb command.
 install-dev:
     bash scripts/install-dev-command.sh

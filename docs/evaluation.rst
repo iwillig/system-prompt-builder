@@ -112,8 +112,9 @@ runs.
 Use ``expected_tool_calls`` to assert the full ordered call trace, including
 each call's exact argument mapping. An empty list asserts that the model made no
 tool calls. DeepEval receives both actual and expected tool traces when scoring
-these cases. A trace mismatch fails the evaluation command and is recorded in
-the result artifact.
+these cases. A trace mismatch fails ``eval run`` and ``eval compare`` and is
+recorded in their artifacts. ``eval ablate`` records trace pass counts across
+repeats and reports a verdict without failing the command.
 
 .. code-block:: yaml
 
@@ -177,6 +178,103 @@ For a prompt that uses fragments, ``spb eval compare`` compresses only the
 aliases the prompt lists under ``compressible_fragments``. Add that front
 matter key before comparing a fragment-based prompt; the comparison fails
 without it.
+
+Ablate fragments and sweep compression rates
+---------------------------------------------
+
+For fragment-based prompts, compare one fragment change at a time with a shared,
+uncompressed baseline. Drop any selected fragment, or compress an alias listed
+under ``compressible_fragments`` at several rates. Other fragments and the
+layout stay unchanged.
+
+Preview the variants and planned case generations without calling the model:
+
+.. code-block:: console
+
+   $ spb eval ablate .spb/prompts/coder.md --harness pi_agent \
+       --suite .spb/evals/coder.yaml --mode both \
+       --fragments routing --rates 0.5,0.3 --dry-run
+
+To run the sweep, omit ``--dry-run``. The default is three repeats. A report
+includes per-run scores, tool-call traces, case-and-metric deltas, and verdicts:
+``REGRESSION``, ``INDETERMINATE``, or ``NO_REGRESSION_DETECTED``. The last
+verdict applies only to the evaluated suite and does not establish that the
+fragment is universally redundant or safe to compress. Fewer than three
+repeats are exploratory and cannot yield ``NO_REGRESSION_DETECTED``.
+
+The preview count is ``(1 + variants) * repeats * cases``. It counts case
+generations, not judge calls, retries, tokens, or total endpoint requests.
+``--max-case-generations N`` rejects a plan above that count before model
+calls. Rate is the fraction of fragment tokens the compressor aims to retain;
+the report's reduction percentage measures characters, not tokens. Use
+``--compressor none`` for an offline rate-path check. Findings are reported
+without a CI failure gate.
+
+Project walkthrough: inspect the routing fragment
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This repository's Python assistant selects ``routing`` for compression.
+The checkout's ``Justfile`` provides three bounded shortcuts:
+
+.. code-block:: console
+
+   $ just fragment-ablate-plan
+   $ just fragment-rate-plan
+   $ OPENAI_API_KEY="$HF_TOKEN" just fragment-ablate-live
+
+The first command previews a drop with no compression model or evaluation
+calls (102 planned case generations). The second previews two rates with local
+LLMLingua and no evaluation calls (153 planned case generations). The third
+**calls the evaluation endpoint** for a drop with three repeats, caps the plan
+at 102 case generations, and writes a timestamped YAML artifact under
+``build/evals/``. Credentials must be configured in the invoking environment;
+no credential is stored in the recipe. Each recipe accepts an optional alias,
+for example ``just fragment-ablate-plan rules``. Rate previews require an
+alias listed under ``compressible_fragments`` and accept a second comma-separated
+rates argument, for example ``just fragment-rate-plan routing 0.5,0.2``.
+These fixed caps reject the run if the suite grows beyond its current size;
+they do not cap judge requests or retries. Use the CLI directly for other
+prompts, suites, modes, or limits.
+
+To preview both transformations without loading a compression model, use the
+CLI directly:
+
+.. code-block:: console
+
+   $ pipenv run spb eval ablate .spb/prompts/python-assistant.md \
+       --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent \
+       --mode both --fragments routing --rates 0.5,0.3 \
+       --compressor none --dry-run --max-case-generations 204
+
+The suite has 17 cases. With three repeats, the shared baseline plus one drop
+and two rate variants plan ``(1 + 3) * 3 * 17 = 204`` case generations. The
+``none`` compressor leaves both rate variants unchanged, so they show zero
+character reduction; this checks wiring, not compression quality. Omit
+``--compressor none`` to preview actual LLMLingua output locally. A measured
+rate-0.5 preview of ``routing`` reduced the whole composed prompt by 2.9% in
+characters; the rate targets tokens *within that fragment*, not a 50% reduction
+of the whole prompt.
+
+When the endpoint is healthy, remove ``--dry-run`` and pass the token only in
+the process environment:
+
+.. code-block:: console
+
+   $ OPENAI_API_KEY="$HF_TOKEN" pipenv run spb eval ablate \
+       .spb/prompts/python-assistant.md \
+       --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent \
+       --mode drop --fragments routing --repeats 3 \
+       --max-case-generations 102 \
+       --output build/evals/routing-ablation.yaml
+
+This command is an example, **not a verified live result**. The output YAML
+contains ``baseline_runs``, per-variant ``outcomes`` with raw ``runs`` and
+``traces``, and a ``matrix`` with one row for each variant/case/metric. Read
+``verdict`` alongside ``reasons`` and ``exploratory`` in each outcome. A
+``REGRESSION`` is an observed majority failure against a stable baseline;
+``INDETERMINATE`` means the evidence is insufficient. Even
+``NO_REGRESSION_DETECTED`` applies only to this suite. A preview does not
+validate the endpoint-backed path.
 
 Benchmark prompt releases
 -------------------------

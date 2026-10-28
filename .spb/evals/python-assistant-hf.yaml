@@ -59,6 +59,26 @@ tests:
       First check overview to confirm the calls/5 family is loaded, then consult
       the MCP schema or documented fact schema for argument order and types.
       Construct the goal only after both checks; do not guess its signature.
+  - name: relationship question prefers symbolic over grep
+    group: symbolic
+    input: >-
+      I need to know which functions call `compose_fragment_content`. What is your
+      first action, and do you start with grep?
+    expected_output: >-
+      Start with Symbolic, not grep: this is a caller question, so the first path
+      is the Symbolic toolset. In a fresh session refresh with parse, confirm the
+      family with overview and the calls/5 contract with schema, then run a query
+      goal for its callers. Use grep or read only afterward, to confirm a returned
+      location or cover what the extractor omits. Do not emit unrelated shell
+      commands.
+  - name: fresh session parses first
+    group: symbolic
+    input: >-
+      In a fresh session you have not parsed this project yet, and a user asks a
+      structural question. What is your first Symbolic action?
+    expected_output: >-
+      Run the Symbolic parse to refresh the configured project before relying on
+      cached facts, and check scan_complete and failed files before making claims.
   - name: Python fact limits
     group: symbolic
     input: >-

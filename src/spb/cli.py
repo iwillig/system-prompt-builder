@@ -22,6 +22,11 @@ from spb.evaluation import (
     write_evaluation_comparison,
     write_evaluation_run,
 )
+from spb.fragment_eval import (
+    evaluate_fragment_plan,
+    plan_fragment_evaluation,
+    write_fragment_report,
+)
 from spb.initialization import initialize_project
 from spb.links import configured_links
 from spb.render_config import configured_renders
@@ -323,7 +328,11 @@ def eval_run(
     help="Target fraction of the original tokens to keep.",
 )
 @click.option(
-    "--max-score-drop", default=0.0, type=click.FloatRange(0, 1), show_default=True
+    "--max-score-drop",
+    default=0.1,
+    type=click.FloatRange(0, 1),
+    show_default=True,
+    help="Allow this much mean-score drop (judge noise) before the gate fails.",
 )
 @click.option("--output", type=click.Path(path_type=Path))
 @click.option(
@@ -386,6 +395,111 @@ def eval_compare(
         raise click.ClickException(
             f"Compressed prompt score dropped by {comparison.score_drop:.3f}"
         )
+
+
+@eval.command("ablate")
+@click.argument("prompt", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--suite", required=True, type=click.Path(exists=True, path_type=Path))
+@click.option("--harness", required=True)
+@click.option("--var", "variable_pairs", multiple=True, metavar="NAME=VALUE")
+@click.option("--mode", type=click.Choice(["drop", "rate", "both"]), default="both")
+@click.option(
+    "--fragments", default="", help="Comma-separated aliases (default: all eligible)."
+)
+@click.option(
+    "--rates", default="0.5,0.3,0.1", help="Fractions of fragment tokens to keep."
+)
+@click.option(
+    "--compressor", type=click.Choice(["none", "llmlingua"]), default="llmlingua"
+)
+@click.option("--repeats", default=3, type=click.IntRange(min=1), show_default=True)
+@click.option(
+    "--noise-floor", default=0.1, type=click.FloatRange(0, 1), show_default=True
+)
+@click.option("--max-case-generations", type=click.IntRange(min=1))
+@click.option("--dry-run", is_flag=True, help="Build variants without model calls.")
+@click.option("--output", type=click.Path(path_type=Path))
+@click.option(
+    "--project-root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path("."),
+)
+def eval_ablate(
+    prompt: Path,
+    suite: Path,
+    harness: str,
+    variable_pairs: tuple[str, ...],
+    mode: str,
+    fragments: str,
+    rates: str,
+    compressor: str,
+    repeats: int,
+    noise_floor: float,
+    max_case_generations: int | None,
+    dry_run: bool,
+    output: Path | None,
+    project_root: Path,
+) -> None:
+    """Evaluate one-fragment drops and compression rates against a baseline."""
+    try:
+        rendered = render_prompt(
+            project_root,
+            prompt,
+            harness=harness,
+            variables=_parse_variables(variable_pairs),
+        )
+        loaded_suite = load_evaluation_suite(suite)
+        validate_tool_scenarios(rendered, loaded_suite)
+        aliases = (
+            tuple(alias.strip() for alias in fragments.split(",")) if fragments else ()
+        )
+        selected_rates = tuple(float(rate.strip()) for rate in rates.split(","))
+        plan = plan_fragment_evaluation(
+            rendered,
+            cases=len(loaded_suite.cases),
+            repeats=repeats,
+            mode=mode,
+            aliases=aliases,
+            rates=selected_rates,
+            compressor=compressor,
+            max_case_generations=max_case_generations,
+        )
+        click.echo(
+            f"Planned case generations: {plan.case_generations} "
+            "(not total endpoint requests)"
+        )
+        for variant in plan.variants:
+            click.echo(
+                f"{variant.alias} {variant.label}: sha256={variant.sha256} "
+                f"character reduction={variant.reduction:.1%}"
+            )
+        if dry_run:
+            return
+        report = evaluate_fragment_plan(
+            plan,
+            loaded_suite,
+            suite_sha256=_sha256(suite.read_text(encoding="utf-8")),
+            harness=harness,
+            noise_floor=noise_floor,
+        )
+        result_path = write_fragment_report(
+            report,
+            output
+            or project_root
+            / "build"
+            / "evals"
+            / rendered.name
+            / rendered.version
+            / "fragment-ablation.yaml",
+        )
+    except (OSError, ValueError) as error:
+        raise click.ClickException(str(error)) from error
+    for outcome in report.outcomes:
+        click.echo(
+            f"{outcome['alias']} {outcome['transformation']}: {outcome['verdict']} "
+            f"({', '.join(outcome['reasons']) or 'no detected change'})"
+        )
+    click.echo(result_path)
 
 
 @cli.group()
@@ -468,7 +582,13 @@ def benchmark_run(
 @click.option("--suite", required=True, type=click.Path(exists=True, path_type=Path))
 @click.option("--harness", required=True)
 @click.option("--var", "variable_pairs", multiple=True, metavar="NAME=VALUE")
-@click.option("--max-score-drop", default=0.0, type=click.FloatRange(0, 1))
+@click.option(
+    "--max-score-drop",
+    default=0.1,
+    type=click.FloatRange(0, 1),
+    show_default=True,
+    help="Allow this much mean-score drop (judge noise) before the gate fails.",
+)
 @click.option(
     "--max-group-score-drop",
     "maximum_group_drops",

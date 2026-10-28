@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -156,6 +157,32 @@ def load_evaluation_suite(path: Path) -> EvaluationSuite:
     )
 
 
+_JUDGE_MAX_ATTEMPTS = 3
+_JUDGE_RETRY_DELAY_SECONDS = 1.0
+
+
+def _is_judge_json_error(error: ValueError) -> bool:
+    """Return True for the reference-free judge's malformed-JSON failure."""
+    return "invalid json" in str(error).lower()
+
+
+def _measure_metric_with_retry(metric: Any, test_case: Any) -> None:
+    """Run metric.measure, retrying transient judge JSON-parse failures.
+
+    The reference-free judge (G-Eval) occasionally emits malformed JSON; DeepEval
+    surfaces that as a ValueError. Re-run measure up to _JUDGE_MAX_ATTEMPTS
+    times, re-raising on the final attempt or on any non-JSON ValueError.
+    """
+    for attempt in range(_JUDGE_MAX_ATTEMPTS):
+        try:
+            metric.measure(test_case)
+            return
+        except ValueError as error:
+            if not _is_judge_json_error(error) or attempt + 1 >= _JUDGE_MAX_ATTEMPTS:
+                raise
+            time.sleep(_JUDGE_RETRY_DELAY_SECONDS)
+
+
 def run_evaluation(
     prompt: RenderedPrompt,
     suite: EvaluationSuite,
@@ -243,7 +270,7 @@ def run_evaluation(
                 judge,
                 include_tool_trace=case.expected_tool_calls is not None,
             )
-            metric.measure(test_case)
+            _measure_metric_with_retry(metric, test_case)
             score = float(metric.score)
             scores.append(score)
             metric_results.append(
