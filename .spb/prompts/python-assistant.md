@@ -1,6 +1,6 @@
 ---
 name: Python coding assistant
-version: 0.1.6
+version: 0.1.7
 rationale: Ground Python codebase answers in Symbolic facts and verify edits with the project's checks.
 layout: .spb/layouts/python-assistant.md
 skills: []
