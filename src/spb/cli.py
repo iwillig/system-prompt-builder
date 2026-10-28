@@ -18,6 +18,7 @@ from spb.evaluation import (
     group_mean_scores,
     load_evaluation_suite,
     run_evaluation,
+    validate_tool_scenarios,
     write_evaluation_comparison,
     write_evaluation_run,
 )
@@ -268,6 +269,7 @@ def eval_run(
             variables=_parse_variables(variable_pairs),
         )
         loaded_suite = load_evaluation_suite(suite)
+        validate_tool_scenarios(rendered, loaded_suite)
         if not dry_run:
             evaluation_run = run_evaluation(
                 rendered,
@@ -286,6 +288,7 @@ def eval_run(
                 / rendered.version
                 / "result.yaml",
             )
+            _check_tool_call_expectations(evaluation_run.results)
             if any(
                 not metric["passed"]
                 for case in evaluation_run.results
@@ -349,6 +352,7 @@ def eval_compare(
         )
         compressed = compress_rendered_prompt(rendered, compressor, rate=compress_rate)
         loaded_suite = load_evaluation_suite(suite)
+        validate_tool_scenarios(rendered, loaded_suite)
         suite_sha256 = _sha256(suite.read_text(encoding="utf-8"))
         baseline = run_evaluation(
             rendered, loaded_suite, suite_sha256=suite_sha256, harness=harness
@@ -359,6 +363,8 @@ def eval_compare(
             suite_sha256=suite_sha256,
             harness=harness,
         )
+        _check_tool_call_expectations(baseline.results)
+        _check_tool_call_expectations(candidate.results)
         comparison = compare_evaluation_runs(
             baseline, candidate, max_score_drop=max_score_drop
         )
@@ -421,12 +427,14 @@ def benchmark_run(
             variables=_parse_variables(variable_pairs),
         )
         loaded_suite = load_evaluation_suite(suite)
+        validate_tool_scenarios(rendered, loaded_suite)
         evaluation_run = run_evaluation(
             rendered,
             loaded_suite,
             suite_sha256=_sha256(suite.read_text(encoding="utf-8")),
             harness=harness,
         )
+        _check_tool_call_expectations(evaluation_run.results)
         minimums = _parse_score_limits(minimum_groups, "--min-group-score")
         groups = group_mean_scores(evaluation_run)
         _check_minimum_scores(groups, minimums, "benchmark group")
@@ -501,6 +509,8 @@ def benchmark_compare(
         candidate_run = run_evaluation(
             candidate_prompt, loaded_suite, suite_sha256=suite_sha256, harness=harness
         )
+        _check_tool_call_expectations(baseline_run.results)
+        _check_tool_call_expectations(candidate_run.results)
         comparison = compare_evaluation_runs(
             baseline_run, candidate_run, max_score_drop=max_score_drop
         )
@@ -768,6 +778,18 @@ def _redact_variables(variables: dict[str, Any]) -> tuple[dict[str, Any], list[s
         else:
             visible[name] = value
     return visible, redacted
+
+
+def _check_tool_call_expectations(results: tuple[dict[str, Any], ...]) -> None:
+    failed = [
+        str(result["name"])
+        for result in results
+        if result.get("tool_calls_passed") is False
+    ]
+    if failed:
+        raise click.ClickException(
+            "Expected tool-call trace did not match for: " + ", ".join(failed)
+        )
 
 
 def _sha256(value: str) -> str:

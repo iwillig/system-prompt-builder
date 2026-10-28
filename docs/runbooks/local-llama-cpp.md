@@ -13,7 +13,7 @@ llama-server --cache-list
 The launcher requires this cached model:
 
 ```text
-unsloth/Qwen3.6-35B-A3B-GGUF:Q8_0
+unsloth/Qwen3.8-27B-GGUF:Q8_0
 ```
 
 Install the evaluation dependencies:
@@ -32,8 +32,10 @@ Run the repository launcher in one terminal:
 
 The launcher starts llama.cpp with these settings:
 
-- Model: `unsloth/Qwen3.6-35B-A3B-GGUF:Q8_0`
+- Model: `unsloth/Qwen3.8-27B-GGUF:Q8_0`
 - Mode: offline
+- Reasoning: disabled to keep evaluation generations bounded
+- Context size: `32768` tokens (override with `LLAMA_CTX_SIZE`)
 - Port: `8080`
 - API model alias: `spb-local-qwen`
 
@@ -43,17 +45,20 @@ Check that the OpenAI-compatible API is available:
 curl http://localhost:8080/v1/models
 ```
 
-Set another port when needed:
+Set another port or context size when needed:
 
 ```bash
-LLAMA_PORT=8081 ./scripts/run-local-llama.sh
+LLAMA_PORT=8081 LLAMA_CTX_SIZE=16384 ./scripts/run-local-llama.sh
 ```
 
 The host must have enough available memory to load the selected model. If the server cannot load it, choose a smaller cached GGUF model and update the launcher before running evaluations.
 
 ## Configure the `llm` Python library
 
-Create or edit `~/.config/io.datasette.llm/extra-openai-models.yaml`:
+Create or edit `extra-openai-models.yaml` in the `llm` user directory:
+`~/Library/Application Support/io.datasette.llm/` on macOS,
+`~/.config/io.datasette.llm/` on Linux. Check the directory with
+`llm user_dir` or `python -c "import llm; print(llm.user_dir())"`:
 
 ```yaml
 - model_id: spb-local-qwen
@@ -80,16 +85,16 @@ model: spb-local-qwen
 Validate the suite and prompt wiring before making a model call:
 
 ```bash
-spb eval validate .spb/evals/typescript-coder.yaml
-spb eval run .spb/prompts/typescript-coder.md --harness pi_agent \
-  --suite .spb/evals/typescript-coder.yaml --dry-run
+spb eval validate .spb/evals/python-assistant.yaml
+spb eval run .spb/prompts/python-assistant.md --harness pi_agent \
+  --suite .spb/evals/python-assistant.yaml --dry-run
 ```
 
 Run the evaluation after the server is ready:
 
 ```bash
-spb eval run .spb/prompts/typescript-coder.md --harness pi_agent \
-  --suite .spb/evals/typescript-coder.yaml
+spb eval run .spb/prompts/python-assistant.md --harness pi_agent \
+  --suite .spb/evals/python-assistant.yaml
 ```
 
 ## Stop the server

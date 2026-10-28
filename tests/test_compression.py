@@ -65,6 +65,19 @@ def test_only_opted_in_fragment_is_compressed(tmp_path: Path, monkeypatch) -> No
     assert compressed.settings["fragments"][0]["output_sha256"]
 
 
+def test_pi_tool_inventory_is_not_compressed() -> None:
+    prompt_path = Path(".spb/prompts/python-assistant.md")
+    rendered = render_prompt(Path.cwd(), prompt_path, harness="pi_agent")
+
+    assert rendered.compressible_fragments == ("routing",)
+    assert "`mcp__symbolic__parse`" in rendered.rendered_fragments["tools"]
+    assert "`mcp__symbolic__parse`" in rendered.rendered_fragments["built_in_tools"]
+    assert (
+        "`mcp__agent_browser__agent_browser_wait_for_text`"
+        in rendered.rendered_fragments["built_in_tools"]
+    )
+
+
 def test_fragment_compression_requires_opt_in(tmp_path: Path) -> None:
     prompt_path = _project(tmp_path, eligible=None)
     rendered = render_prompt(tmp_path, prompt_path, harness="pi_agent")

@@ -396,9 +396,9 @@ def test_python_assistant_identity_uses_config_project() -> None:
     )
     assert len(result.fragments) == 10
     assert "built_in_tools" in result.rendered_fragments
-    assert "`read`: Read a file's contents" in result.content
-    assert result.version == "0.1.3"
-    assert "<version>\n0.1.3\n</version>" in result.content
+    assert "`read`: Read a file, optionally selecting a line range." in result.content
+    assert result.version == "0.1.6"
+    assert "<version>\n0.1.6\n</version>" in result.content
     assert result.content.startswith(
         "<identity>\nYou are a Python coding agent for system_prompt_builder, "
         "running in pi_agent.\n"

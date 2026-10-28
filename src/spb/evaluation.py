@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -27,6 +27,8 @@ class EvaluationCase:
     group: str
     input: str
     expected_output: str | None
+    mock_tools: dict[str, str] = field(default_factory=dict)
+    expected_tool_calls: tuple[dict[str, Any], ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -161,19 +163,22 @@ def run_evaluation(
     suite_sha256: str,
     harness: str,
 ) -> EvaluationRun:
-    """Generate direct model responses and evaluate them with DeepEval."""
+    """Generate model responses, including mock-tool chains, and evaluate them."""
     try:
-        import llm  # type: ignore[import-not-found]
-        from deepeval.metrics import (  # type: ignore[import-not-found]
+        import llm
+        from deepeval.metrics import (
             AnswerRelevancyMetric,
             GEval,
         )
-        from deepeval.models.base_model import (  # type: ignore[import-not-found]
+        from deepeval.models.base_model import (
             DeepEvalBaseLLM,
         )
-        from deepeval.test_case import (  # type: ignore[import-not-found]
+        from deepeval.test_case import (
             LLMTestCase,
             SingleTurnParams,
+        )
+        from deepeval.test_case import (
+            ToolCall as DeepEvalToolCall,
         )
     except ImportError as error:
         raise ValueError(
@@ -185,15 +190,58 @@ def run_evaluation(
     judge = _llm_judge(llm, DeepEvalBaseLLM, suite.judge_model)
     results: list[dict[str, Any]] = []
     scores: list[float] = []
+    validate_tool_scenarios(prompt, suite)
     for case in suite.cases:
-        output = model.prompt(case.input, system=prompt.content).text()
+        tool_calls: list[dict[str, Any]] = []
+        if case.mock_tools:
+            tools = _mock_tools(prompt, case, llm)
+
+            def record_tool_call(
+                _tool: Any, call: Any, recorded_calls: list[dict[str, Any]] = tool_calls
+            ) -> None:
+                recorded_calls.append({"name": call.name, "arguments": call.arguments})
+
+            output = model.chain(
+                case.input,
+                system=prompt.content,
+                tools=tools,
+                before_call=record_tool_call,
+            ).text()
+        else:
+            output = model.prompt(case.input, system=prompt.content).text()
+        tool_calls_passed = (
+            None
+            if case.expected_tool_calls is None
+            else tool_calls == list(case.expected_tool_calls)
+        )
         test_case = LLMTestCase(
-            input=case.input, actual_output=output, expected_output=case.expected_output
+            input=case.input,
+            actual_output=output,
+            expected_output=case.expected_output,
+            tools_called=[
+                DeepEvalToolCall(name=call["name"], input_parameters=call["arguments"])
+                for call in tool_calls
+            ],
+            expected_tools=(
+                [
+                    DeepEvalToolCall(
+                        name=call["name"], input_parameters=call["arguments"]
+                    )
+                    for call in case.expected_tool_calls
+                ]
+                if case.expected_tool_calls is not None
+                else None
+            ),
         )
         metric_results: list[dict[str, Any]] = []
         for spec in suite.metrics:
             metric = _build_metric(
-                spec, AnswerRelevancyMetric, GEval, SingleTurnParams, judge
+                spec,
+                AnswerRelevancyMetric,
+                GEval,
+                SingleTurnParams,
+                judge,
+                include_tool_trace=case.expected_tool_calls is not None,
             )
             metric.measure(test_case)
             score = float(metric.score)
@@ -213,6 +261,13 @@ def run_evaluation(
                 "group": case.group,
                 "input": case.input,
                 "output": output,
+                "tool_calls": tool_calls,
+                "expected_tool_calls": (
+                    list(case.expected_tool_calls)
+                    if case.expected_tool_calls is not None
+                    else None
+                ),
+                "tool_calls_passed": tool_calls_passed,
                 "metrics": metric_results,
             }
         )
@@ -256,6 +311,61 @@ def group_mean_scores(run: EvaluationRun) -> dict[str, float]:
     }
 
 
+def validate_tool_scenarios(prompt: RenderedPrompt, suite: EvaluationSuite) -> None:
+    """Check that case mocks refer to configured, schema-backed tools."""
+    configured = {tool.get("name"): tool for tool in prompt.tool_metadata}
+    for case in suite.cases:
+        for name in case.mock_tools:
+            tool = configured.get(name)
+            if tool is None:
+                raise ValueError(
+                    f"Evaluation case {case.name!r} mocks unknown configured tool "
+                    f"{name!r}"
+                )
+            if not isinstance(tool.get("parameters"), dict):
+                raise ValueError(
+                    f"Configured tool {name!r} needs a parameters JSON Schema "
+                    "to be used in a mock evaluation"
+                )
+        if case.expected_tool_calls is not None:
+            if not case.mock_tools and case.expected_tool_calls:
+                raise ValueError(
+                    f"Evaluation case {case.name!r} expects tool calls but "
+                    "defines no mock_tools"
+                )
+            for expected in case.expected_tool_calls:
+                if expected["name"] not in case.mock_tools:
+                    raise ValueError(
+                        f"Evaluation case {case.name!r} expects unmocked tool "
+                        f"{expected['name']!r}"
+                    )
+
+
+def _mock_tools(
+    prompt: RenderedPrompt, case: EvaluationCase, llm_module: Any
+) -> list[Any]:
+    configured = {tool["name"]: tool for tool in prompt.tool_metadata}
+    tools = []
+    for name, result in case.mock_tools.items():
+        metadata = configured[name]
+
+        def mock_implementation(result_text: str) -> Any:
+            def implementation(**_arguments: Any) -> str:
+                return result_text
+
+            return implementation
+
+        tools.append(
+            llm_module.Tool(
+                name=name,
+                description=metadata.get("summary"),
+                input_schema=metadata["parameters"],
+                implementation=mock_implementation(result),
+            )
+        )
+    return tools
+
+
 def _visible_variables(variables: dict[str, Any]) -> dict[str, Any]:
     secret_words = ("password", "secret", "token", "key")
     return {
@@ -288,16 +398,25 @@ def _llm_judge(llm_module: Any, base_class: Any, model_id: str | None) -> Any:
 
 
 def _build_metric(
-    spec: MetricSpec, answer_relevancy: Any, g_eval: Any, params: Any, judge: Any
+    spec: MetricSpec,
+    answer_relevancy: Any,
+    g_eval: Any,
+    params: Any,
+    judge: Any,
+    *,
+    include_tool_trace: bool = False,
 ) -> Any:
     if spec.type == "answer_relevancy":
         return answer_relevancy(threshold=spec.threshold)
+    evaluation_params = [params.INPUT, params.ACTUAL_OUTPUT, params.EXPECTED_OUTPUT]
+    if include_tool_trace:
+        evaluation_params.extend([params.TOOLS_CALLED, params.EXPECTED_TOOLS])
     return g_eval(
         name=spec.name or "G-Eval",
         criteria=spec.criteria or "",
         threshold=spec.threshold,
         model=judge,
-        evaluation_params=[params.INPUT, params.ACTUAL_OUTPUT, params.EXPECTED_OUTPUT],
+        evaluation_params=evaluation_params,
     )
 
 
@@ -326,6 +445,32 @@ def _case(value: Any) -> EvaluationCase:
     expected_output = value.get("expected_output")
     if expected_output is not None and not isinstance(expected_output, str):
         raise ValueError("Test expected_output must be a string")
+    mock_tools = value.get("mock_tools", {})
+    if not isinstance(mock_tools, dict) or not all(
+        isinstance(name, str) and name and isinstance(result, str)
+        for name, result in mock_tools.items()
+    ):
+        raise ValueError("Test mock_tools must map tool names to string results")
+    expected_tool_calls_value = value.get("expected_tool_calls")
+    expected_tool_calls: tuple[dict[str, Any], ...] | None = None
+    if expected_tool_calls_value is not None:
+        if not isinstance(expected_tool_calls_value, list):
+            raise ValueError("Test expected_tool_calls must be a list")
+        expected_tool_calls_list = []
+        for call in expected_tool_calls_value:
+            if (
+                not isinstance(call, dict)
+                or not isinstance(call.get("name"), str)
+                or not call["name"]
+                or not isinstance(call.get("arguments"), dict)
+            ):
+                raise ValueError(
+                    "Each expected_tool_calls entry needs a name and arguments mapping"
+                )
+            expected_tool_calls_list.append(
+                {"name": call["name"], "arguments": call["arguments"]}
+            )
+        expected_tool_calls = tuple(expected_tool_calls_list)
     group = value.get("group", "default")
     if not isinstance(group, str) or not group:
         raise ValueError("Test group must be a non-empty string")
@@ -334,6 +479,8 @@ def _case(value: Any) -> EvaluationCase:
         group=group,
         input=_required_string(value, "input"),
         expected_output=expected_output,
+        mock_tools=mock_tools,
+        expected_tool_calls=expected_tool_calls,
     )
 
 

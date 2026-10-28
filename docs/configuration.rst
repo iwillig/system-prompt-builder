@@ -112,7 +112,24 @@ A prompt can iterate over the selected harness's tool list:
 
 ``spb`` requires each tool entry to be a YAML mapping. The prompt decides which
 fields it reads. ``name`` and ``summary`` are conventional fields rather than a
-fixed tool schema.
+fixed tool schema. Add a ``parameters`` JSON Schema when an evaluation needs to
+expose the tool as a model-callable function:
+
+.. code-block:: yaml
+
+   - name: read
+     summary: Read a file from the project.
+     parameters:
+       type: object
+       properties:
+         path:
+           type: string
+       required: [path]
+       additionalProperties: false
+
+The schema is optional for prompt rendering. Mock evaluations require it for
+every configured tool they offer to the model. Mock evaluation calls never
+execute the real tool implementation.
 
 This repository configures its own ``pi_agent`` tools this way, and its
 ``built_in_tools`` fragment renders them into the rendered prompt:

@@ -12,39 +12,2655 @@ tool_provider_metadata:
   pi_agent:
     tools:
     - name: read
-      summary: Read a file's contents, including text and supported images.
+      summary: Read a file, optionally selecting a line range.
+      parameters:
+        type: object
+        properties:
+          path:
+            type: string
+            description: File path.
+          offset:
+            anyOf:
+            - type: integer
+            - type: 'null'
+            description: First line to read, starting at 1.
+          limit:
+            anyOf:
+            - type: integer
+            - type: 'null'
+            description: Maximum number of lines to return.
+        required:
+        - path
+        additionalProperties: false
     - name: write
-      summary: Create or overwrite a file with new content.
+      summary: Create or overwrite a file.
+      parameters:
+        type: object
+        properties:
+          path:
+            type: string
+            description: File path.
+          content:
+            type: string
+            description: Complete file content.
+        required:
+        - path
+        - content
+        additionalProperties: false
     - name: edit
-      summary: Apply exact, targeted replacements inside one file.
+      summary: Apply exact replacements to one file.
+      parameters:
+        type: object
+        properties:
+          path:
+            type: string
+            description: File path.
+          edits:
+            type: array
+            description: Exact replacements to apply.
+            items:
+              type: object
+              properties:
+                oldText:
+                  type: string
+                  description: Unique text to replace.
+                newText:
+                  type: string
+                  description: Replacement text.
+              required:
+              - oldText
+              - newText
+              additionalProperties: false
+        required:
+        - path
+        - edits
+        additionalProperties: false
     - name: bash
-      summary: Execute a shell command in the project and return its output.
+      summary: Execute a shell command.
+      parameters:
+        type: object
+        properties:
+          command:
+            type: string
+            description: Shell command.
+          timeout:
+            oneOf:
+            - type: integer
+              description: Timeout in seconds.
+            - type: 'null'
+        required:
+        - command
+        additionalProperties: false
     - name: grep
-      summary: Search file contents for a pattern across the project.
+      summary: Search file contents for a pattern.
+      parameters:
+        type: object
+        properties:
+          pattern:
+            type: string
+            description: Regular expression or literal search pattern.
+          path:
+            type: string
+            description: Directory or file to search.
+          glob:
+            type: string
+            description: File glob filter.
+          ignoreCase:
+            type: boolean
+            description: Use case-insensitive matching.
+          literal:
+            type: boolean
+            description: Treat the pattern as a literal string.
+          context:
+            anyOf:
+            - type: integer
+            - type: 'null'
+            description: Number of context lines around matches.
+          limit:
+            anyOf:
+            - type: integer
+            - type: 'null'
+            description: Maximum number of matches.
+        required:
+        - pattern
+        additionalProperties: false
     - name: find
-      summary: Search for files by glob pattern across the project.
+      summary: Find files by glob pattern.
+      parameters:
+        type: object
+        properties:
+          pattern:
+            type: string
+            description: Glob pattern.
+          path:
+            type: string
+            description: Directory to search.
+          limit:
+            type: integer
+            description: Maximum number of results.
+        required:
+        - pattern
+        additionalProperties: false
     - name: ls
-      summary: List a directory's entries.
+      summary: List directory contents.
+      parameters:
+        type: object
+        properties:
+          path:
+            type: string
+            description: Directory path.
+          limit:
+            type: integer
+            description: Maximum number of entries.
+        required: []
+        additionalProperties: false
     - name: fetch
       summary: Fetch a web URL as readable text.
-    - name: codemode
-      summary: Run JavaScript that calls the agent's other tools in one script.
+      parameters:
+        type: object
+        properties:
+          url:
+            type: string
+            description: HTTP or HTTPS URL.
+        required:
+        - url
+        additionalProperties: false
     - name: ask_user
-      summary: Ask the user a structured question with optional choices.
+      summary: Ask the user a structured question.
+      parameters:
+        type: object
+        properties:
+          question:
+            type: string
+            description: Single question or heading for a batch.
+          questions:
+            type: array
+            description: Two to four independent questions.
+            items:
+              type: object
+              properties:
+                question:
+                  type: string
+                  description: Question text.
+                context:
+                  type: string
+                  description: Relevant decision context.
+                options:
+                  type: array
+                  description: Selectable answers.
+                  items:
+                    type: object
+                    properties:
+                      title:
+                        type: string
+                        description: Short option title.
+                      description:
+                        type: string
+                        description: Option details.
+                    required:
+                    - title
+                    additionalProperties: false
+                allowMultiple:
+                  type: boolean
+                  description: Allow multiple selections.
+                allowFreeform:
+                  type: boolean
+                  description: Allow a free-form answer.
+              required:
+              - question
+              additionalProperties: false
+            minItems: 2
+            maxItems: 4
+          context:
+            type: string
+            description: Relevant context for a single question.
+          options:
+            type: array
+            description: Selectable answers.
+            items:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: Short option title.
+                description:
+                  type: string
+                  description: Option details.
+              required:
+              - title
+              additionalProperties: false
+          allowMultiple:
+            type: boolean
+            description: Allow multiple selections.
+          allowFreeform:
+            type: boolean
+            description: Allow a free-form answer.
+          allowComment:
+            type: boolean
+            description: Allow an optional comment.
+          displayMode:
+            type: string
+            description: Question display mode.
+            enum:
+            - overlay
+            - inline
+          singleSelectLayout:
+            type: string
+            description: Single-select layout.
+            enum:
+            - auto
+            - list
+          contextExpanded:
+            type: boolean
+            description: Show the full context by default.
+          overlayToggleKey:
+            type: string
+            description: Keyboard shortcut for toggling the overlay.
+          commentToggleKey:
+            type: string
+            description: Keyboard shortcut for the comment field.
+          timeout:
+            type: integer
+            description: Auto-dismiss delay in milliseconds.
+        required: []
+        additionalProperties: false
     - name: memory_search
-      summary: Search persistent memory across sessions.
+      summary: Search durable memory entries.
+      parameters:
+        type: object
+        properties:
+          query:
+            type: string
+            description: Search terms or question.
+          project:
+            anyOf:
+            - type: string
+            - type: 'null'
+            description: Project filter; null means global memories.
+          target:
+            type: string
+            description: Memory target.
+            enum:
+            - memory
+            - user
+            - failure
+            - project
+          category:
+            type: string
+            description: Failure-memory category.
+            enum:
+            - failure
+            - correction
+            - insight
+            - preference
+            - convention
+            - tool-quirk
+          limit:
+            type: integer
+            description: Maximum results.
+            minimum: 1
+            maximum: 20
+        required:
+        - query
+        additionalProperties: false
     - name: memory_add
-      summary: Save a durable memory entry for future sessions.
+      summary: Save durable information to memory.
+      parameters:
+        type: object
+        properties:
+          target:
+            type: string
+            description: Memory scope.
+            enum:
+            - memory
+            - user
+            - project
+            - failure
+          content:
+            type: string
+            description: Durable information to save.
+          category:
+            type: string
+            description: Failure-memory category.
+            enum:
+            - failure
+            - correction
+            - insight
+            - preference
+            - convention
+            - tool-quirk
+          failure_reason:
+            type: string
+            description: Reason a failure occurred.
+        required:
+        - target
+        - content
+        additionalProperties: false
+    - name: memory_replace
+      summary: Replace a matching durable memory entry.
+      parameters:
+        type: object
+        properties:
+          target:
+            type: string
+            description: Memory scope.
+            enum:
+            - memory
+            - user
+            - project
+            - failure
+          old_text:
+            type: string
+            description: Text identifying the existing entry.
+          content:
+            type: string
+            description: Replacement memory content.
+        required:
+        - target
+        - old_text
+        - content
+        additionalProperties: false
+    - name: memory_remove
+      summary: Remove a matching durable memory entry.
+      parameters:
+        type: object
+        properties:
+          target:
+            type: string
+            description: Memory scope.
+            enum:
+            - memory
+            - user
+            - project
+            - failure
+          old_text:
+            type: string
+            description: Text identifying the entry to remove.
+        required:
+        - target
+        - old_text
+        additionalProperties: false
     - name: session_search
-      summary: Search past conversation sessions for context.
+      summary: Search previous Pi sessions.
+      parameters:
+        type: object
+        properties:
+          query:
+            type: string
+            description: Search query.
+          project:
+            type: string
+            description: Project filter.
+          role:
+            type: string
+            description: Message role filter.
+            enum:
+            - user
+            - assistant
+          limit:
+            type: integer
+            description: Maximum results.
+            minimum: 1
+            maximum: 20
+          snippetChars:
+            type: integer
+            description: Maximum characters per result snippet.
+            minimum: 100
+            maximum: 4000
+        required:
+        - query
+        additionalProperties: false
     - name: skill_manage
-      summary: Create, view, update, or delete reusable procedural skills.
-    - name: symbolic_parse
-      summary: Refresh and scan the project with Symbolic; report completeness.
-    - name: symbolic_query
-      summary: Prove a Prolog goal over the loaded Symbolic facts.
-    - name: browser
-      summary: Open and inspect web pages in a controlled browser session.
+      summary: Manage reusable Pi agent skills.
+      parameters:
+        type: object
+        properties:
+          action:
+            type: string
+            description: Operation to perform.
+            enum:
+            - create
+            - view
+            - patch
+            - update
+            - edit
+            - delete
+          name:
+            type: string
+            description: Skill name for creation.
+          skill_id:
+            type: string
+            description: Stable skill identifier.
+          description:
+            type: string
+            description: Skill summary and discovery triggers.
+          scope:
+            type: string
+            description: Storage scope.
+            enum:
+            - global
+            - project
+          section:
+            type: string
+            description: Section to patch.
+          content:
+            type: string
+            description: Raw Markdown skill content.
+          when_to_use:
+            type: string
+            description: When the procedure applies.
+          procedure_steps:
+            type: array
+            description: Ordered procedure steps.
+            items:
+              type: string
+          pitfalls:
+            type: array
+            description: Pitfalls to avoid.
+            items:
+              type: string
+          verification_steps:
+            type: array
+            description: Steps that verify completion.
+            items:
+              type: string
+        required:
+        - action
+        additionalProperties: false
+    - name: codemode
+      summary: Run JavaScript that calls available agent tools.
+      parameters:
+        type: object
+        properties:
+          script:
+            type: string
+            description: JavaScript source to execute.
+        required:
+        - script
+        additionalProperties: false
+    - name: list_mcp_resources
+      summary: List resources exposed by MCP servers.
+      parameters:
+        type: object
+        properties:
+          server:
+            type: string
+            description: MCP server name.
+          cursor:
+            type: string
+            description: Pagination cursor.
+        required: []
+        additionalProperties: false
+    - name: list_mcp_resource_templates
+      summary: List MCP resource templates.
+      parameters:
+        type: object
+        properties:
+          server:
+            type: string
+            description: MCP server name.
+          cursor:
+            type: string
+            description: Pagination cursor.
+        required: []
+        additionalProperties: false
+    - name: read_mcp_resource
+      summary: Read an MCP resource.
+      parameters:
+        type: object
+        properties:
+          server:
+            type: string
+            description: MCP server name.
+          uri:
+            type: string
+            description: Resource URI.
+        required:
+        - server
+        - uri
+        additionalProperties: false
+    - name: mcp__symbolic__status
+      summary: Report the active Symbolic parse or query phase.
+      parameters:
+        type: object
+        properties: {}
+        required: []
+        additionalProperties: false
+    - name: mcp__symbolic__search_functions
+      summary: Find function definitions by name or identifier terms.
+      parameters:
+        type: object
+        properties:
+          query:
+            type: string
+            description: Function name or identifier terms.
+          path:
+            type: string
+            description: Project-relative search path.
+          limit:
+            type: integer
+            description: Maximum results.
+        required:
+        - query
+        additionalProperties: false
+    - name: mcp__symbolic__search
+      summary: Search indexed comments and Markdown prose.
+      parameters:
+        type: object
+        properties:
+          query:
+            type: string
+            description: Search terms.
+          path:
+            type: string
+            description: Search path.
+          limit:
+            type: integer
+            description: Maximum results.
+        required:
+        - query
+        additionalProperties: false
+    - name: mcp__symbolic__schema
+      summary: Read documented Symbolic predicate contracts.
+      parameters:
+        type: object
+        properties:
+          name:
+            type: string
+            description: Predicate name or name/arity.
+        required: []
+        additionalProperties: false
+    - name: mcp__symbolic__query
+      summary: Prove a Prolog goal against the loaded Symbolic facts.
+      parameters:
+        type: object
+        properties:
+          goal:
+            type: string
+            description: Prolog goal.
+          limit:
+            type: integer
+            description: Maximum solutions.
+          path:
+            type: string
+            description: Cached project path.
+        required:
+        - goal
+        additionalProperties: false
+    - name: mcp__symbolic__parse
+      summary: Refresh the Symbolic scan for a project.
+      parameters:
+        type: object
+        properties:
+          path:
+            type: string
+            description: Project directory containing .symbolic/config.json.
+          config_file:
+            type: string
+            description: Explicit .symbolic/config.json path.
+        required: []
+        additionalProperties: false
+    - name: mcp__symbolic__overview
+      summary: Report loaded Symbolic facts and scan status.
+      parameters:
+        type: object
+        properties:
+          path:
+            type: string
+            description: Cached project path.
+        required: []
+        additionalProperties: false
+    - name: mcp__symbolic__extract
+      summary: Extract a bounded claim from a sentence.
+      parameters:
+        type: object
+        properties:
+          sentence:
+            type: string
+            description: Sentence to analyze.
+          model:
+            type: string
+            description: Optional model identifier.
+        required:
+        - sentence
+        additionalProperties: false
+    - name: mcp__symbolic__check
+      summary: Check a claim against loaded Symbolic facts.
+      parameters:
+        type: object
+        properties:
+          sentence:
+            type: string
+            description: Claim to check.
+          model:
+            type: string
+            description: Optional model identifier.
+          path:
+            type: string
+            description: Cached project path.
+        required:
+        - sentence
+        additionalProperties: false
+    - name: mcp__symbolic__ask_catalog
+      summary: List supported Symbolic natural-language questions.
+      parameters:
+        type: object
+        properties: {}
+        required: []
+        additionalProperties: false
+    - name: mcp__symbolic__ask
+      summary: Answer a bounded question about the codebase.
+      parameters:
+        type: object
+        properties:
+          question:
+            type: string
+            description: Question about the loaded codebase.
+          path:
+            type: string
+            description: Cached project path.
+        required:
+        - question
+        additionalProperties: false
+    - name: mcp__symbolic__analyze_text
+      summary: Analyze English text and propose bounded query frames.
+      parameters:
+        type: object
+        properties:
+          text:
+            type: string
+            description: English text to analyze.
+        required:
+        - text
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_tools_profiles
+      summary: List browser tool profiles and setup options.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_open
+      summary: Open a browser and optionally navigate to a URL.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          headed:
+            type: boolean
+            description: Show the browser window.
+          url:
+            type: string
+            description: URL to open.
+          webgpu:
+            type: boolean
+            description: Enable WebGPU.
+          webmcp:
+            type: boolean
+            description: Enable experimental WebMCP.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_read
+      summary: Fetch or read the active browser page as text.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          filter:
+            type: string
+            description: Filter page sections or headings.
+          llms:
+            type: string
+            description: Return nearest-ancestor llms data.
+            enum:
+            - index
+            - full
+          outline:
+            type: boolean
+            description: Return a heading outline.
+          raw:
+            type: boolean
+            description: Return the response body.
+          readTimeoutMs:
+            type: integer
+            description: HTTP read timeout in milliseconds.
+          requireMd:
+            type: boolean
+            description: Require a Markdown response.
+          url:
+            type: string
+            description: URL to read.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_snapshot
+      summary: Read the browser accessibility tree.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          compact:
+            type: boolean
+            description: Remove empty structural elements.
+          delta:
+            type: boolean
+            description: Return changes since the last snapshot.
+          depth:
+            type: integer
+            description: Maximum tree depth.
+            minimum: 0
+          full:
+            type: boolean
+            description: Force a full snapshot.
+          includeUrls:
+            type: boolean
+            description: Include link URLs.
+          interactive:
+            type: boolean
+            description: Return interactive elements only.
+          selector:
+            type: string
+            description: Scope snapshot to a CSS selector.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_click
+      summary: Click a browser element.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          human:
+            type: boolean
+            description: Use seeded curved mouse movement.
+          newTab:
+            type: boolean
+            description: Open the link in a new tab.
+          selector:
+            type: string
+            description: Element reference or CSS selector.
+        required:
+        - selector
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_fill
+      summary: Clear and fill a browser input.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          selector:
+            type: string
+            description: Element reference or CSS selector.
+          text:
+            type: string
+            description: Text to fill.
+        required:
+        - selector
+        - text
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_type
+      summary: Type text into a browser element.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          clear:
+            type: boolean
+            description: Clear the field before typing.
+          delayMs:
+            type: integer
+            description: Delay between keystrokes.
+            minimum: 0
+          selector:
+            type: string
+            description: Element reference or CSS selector.
+          text:
+            type: string
+            description: Text to type.
+        required:
+        - selector
+        - text
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_press
+      summary: Press a keyboard key in the browser.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          key:
+            type: string
+            description: Key name, such as Enter or Control+a.
+        required:
+        - key
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_check
+      summary: Check a browser checkbox or switch.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          selector:
+            type: string
+            description: Element reference or CSS selector.
+        required:
+        - selector
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_uncheck
+      summary: Uncheck a browser checkbox or switch.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          selector:
+            type: string
+            description: Element reference or CSS selector.
+        required:
+        - selector
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_select
+      summary: Select options in a browser select element.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          selector:
+            type: string
+            description: Element reference or CSS selector.
+          values:
+            type: array
+            description: Option values or labels.
+            items:
+              type: string
+            minItems: 1
+        required:
+        - selector
+        - values
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_scroll
+      summary: Scroll the page or a browser element.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          amount:
+            type: integer
+            description: Pixels to scroll.
+          direction:
+            type: string
+            description: Scroll direction.
+            enum:
+            - up
+            - down
+            - left
+            - right
+          selector:
+            type: string
+            description: Element selector to scroll.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_wait_ms
+      summary: Wait for a fixed time.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          ms:
+            type: integer
+            description: Wait duration in milliseconds.
+            minimum: 0
+        required:
+        - ms
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_wait_for_selector
+      summary: Wait for a browser element.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          selector:
+            type: string
+            description: CSS selector.
+          waitTimeoutMs:
+            type: integer
+            description: Maximum wait time in milliseconds.
+            minimum: 1
+        required:
+        - selector
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_wait_for_text
+      summary: Wait for text on the browser page.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          text:
+            type: string
+            description: Text to wait for.
+          waitTimeoutMs:
+            type: integer
+            description: Maximum wait time in milliseconds.
+            minimum: 1
+        required:
+        - text
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_wait_for_load
+      summary: Wait for a browser page load state.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          state:
+            type: string
+            description: Load state.
+            enum:
+            - load
+            - domcontentloaded
+            - networkidle
+          waitTimeoutMs:
+            type: integer
+            description: Maximum wait time in milliseconds.
+            minimum: 1
+        required:
+        - state
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_screenshot
+      summary: Capture a browser screenshot.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          annotate:
+            type: boolean
+            description: Annotate visible elements in the screenshot.
+          format:
+            type: string
+            description: Image format.
+            enum:
+            - png
+            - jpeg
+          fullPage:
+            type: boolean
+            description: Capture the full page.
+          ifChanged:
+            type: boolean
+            description: Return only if pixels changed.
+          path:
+            type: string
+            description: Screenshot output path.
+          quality:
+            type: integer
+            description: JPEG quality.
+            minimum: 0
+            maximum: 100
+          screenshotDir:
+            type: string
+            description: Default screenshot directory.
+          selector:
+            type: string
+            description: Element to capture.
+          threshold:
+            type: number
+            description: Changed-pixel ratio threshold.
+            minimum: 0
+            maximum: 1
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_get_text
+      summary: Get visible text from a browser element.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          selector:
+            type: string
+            description: Element reference or CSS selector.
+        required:
+        - selector
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_get_url
+      summary: Get the current browser URL.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_get_title
+      summary: Get the current browser page title.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_eval
+      summary: Run JavaScript in the current browser page.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          script:
+            type: string
+            description: JavaScript expression or script.
+        required:
+        - script
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_close
+      summary: Close the current browser session.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          all:
+            type: boolean
+            description: Close all active sessions.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_back
+      summary: Navigate back in the browser history.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_forward
+      summary: Navigate forward in the browser history.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_reload
+      summary: Reload the current browser page.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_tab_new
+      summary: Open a new browser tab.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          label:
+            type: string
+            description: Optional tab label.
+          url:
+            type: string
+            description: URL to open.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_tab_list
+      summary: List browser tabs.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+        required: []
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_tab_switch
+      summary: Switch to a browser tab.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          tab:
+            type: string
+            description: Tab ID, label, or target ID.
+        required:
+        - tab
+        additionalProperties: false
+    - name: mcp__agent_browser__agent_browser_tab_close
+      summary: Close a browser tab.
+      parameters:
+        type: object
+        properties:
+          allowedDomains:
+            type: array
+            description: Restrict traffic to these domains.
+            items:
+              type: string
+          caCert:
+            type: string
+            description: CA certificate or PEM bundle path.
+          clearCaCert:
+            type: boolean
+            description: Clear retained CA trust.
+          extraArgs:
+            type: array
+            description: Extra browser CLI arguments.
+            items:
+              type: string
+          idleTimeout:
+            type: string
+            description: Daemon idle timeout.
+          namespace:
+            type: string
+            description: Isolated daemon namespace.
+          restore:
+            oneOf:
+            - type: boolean
+              description: Restore saved state.
+            - type: string
+              description: Named saved-state key.
+          restoreCheckFn:
+            type: string
+            description: JavaScript expression that must be true after restore.
+          restoreCheckText:
+            type: string
+            description: Text that restored page must contain.
+          restoreCheckUrl:
+            type: string
+            description: URL pattern that restored page must match.
+          restoreSave:
+            type: string
+            description: Saved-state policy.
+            enum:
+            - auto
+            - always
+            - never
+          session:
+            type: string
+            description: Isolated browser session name.
+          timeoutMs:
+            type: integer
+            description: Tool timeout in milliseconds.
+            minimum: 1
+          useSystemCa:
+            type: boolean
+            description: Use the operating-system CA store for CLI HTTPS requests.
+          tab:
+            type: string
+            description: Tab ID, label, or target ID.
+        required: []
+        additionalProperties: false
 skill_providers:
 - name: local
   type: local

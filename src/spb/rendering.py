@@ -76,6 +76,7 @@ class RenderedPrompt:
     fragments: tuple[ResolvedFragment, ...] = ()
     rendered_fragments: dict[str, str] = field(default_factory=dict)
     compressible_fragments: tuple[str, ...] = ()
+    tool_metadata: tuple[dict[str, Any], ...] = ()
 
 
 def render_prompt(
@@ -151,6 +152,7 @@ def render_prompt(
         fragments=fragments,
         rendered_fragments=rendered_fragments,
         compressible_fragments=compressible,
+        tool_metadata=tuple(tools),
     )
 
 

@@ -160,7 +160,8 @@ Validate an evaluation suite without loading a model.
 
    $ spb eval validate SUITE
 
-This command has no options.
+This command has no options. Store project suite files in
+``.spb/evals/``; the command also accepts any existing suite path.
 
 ``spb eval run``
 ----------------
@@ -190,7 +191,7 @@ write an evaluation result.
      - Supply a declared prompt variable. Repeat as needed.
    * - ``--dry-run``
      - Disabled
-     - Validate prompt and suite wiring without a model call or result file.
+     - Validate prompt, suite, and mock-tool wiring without a model call or result file.
    * - ``--output PATH``
      - Generated path
      - Write the result to an exact file.
@@ -203,7 +204,8 @@ write an evaluation result.
 
 The default output is
 ``.spb/build/evals/<prompt-name>/<version>/result.yaml``. The command also fails when
-any metric reports that its required threshold was not met.
+any metric reports that its required threshold was not met or an expected
+mock-tool call trace does not match.
 
 ``spb eval compare``
 ---------------------

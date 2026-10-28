@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -46,6 +47,109 @@ tests:
     assert suite.judge_model == "local-judge"
     assert suite.metrics[1].type == "g_eval"
     assert suite.cases[0].expected_output == "A concrete bug report."
+    assert suite.cases[0].mock_tools == {}
+    assert suite.cases[0].expected_tool_calls is None
+
+
+def test_load_evaluation_suite_reads_mock_tool_expectations(tmp_path: Path) -> None:
+    from spb.evaluation import load_evaluation_suite
+
+    suite_path = tmp_path / "tools.yaml"
+    suite_path.write_text(
+        """\
+model: local
+metrics:
+  - type: answer_relevancy
+tests:
+  - name: read a file
+    input: Read src/example.py and summarize it.
+    mock_tools:
+      read: "def answer(): return 42"
+    expected_tool_calls:
+      - name: read
+        arguments: {path: src/example.py}
+""",
+        encoding="utf-8",
+    )
+
+    suite = load_evaluation_suite(suite_path)
+
+    assert suite.cases[0].mock_tools == {"read": "def answer(): return 42"}
+    assert suite.cases[0].expected_tool_calls == (
+        {"name": "read", "arguments": {"path": "src/example.py"}},
+    )
+
+
+def test_tool_scenarios_require_configured_schema(tmp_path: Path) -> None:
+    from spb.evaluation import (
+        EvaluationCase,
+        EvaluationSuite,
+        MetricSpec,
+        validate_tool_scenarios,
+    )
+    from spb.rendering import RenderedPrompt
+
+    suite = EvaluationSuite(
+        model="local",
+        judge_model=None,
+        metrics=(MetricSpec(type="answer_relevancy", threshold=0.5),),
+        cases=(
+            EvaluationCase(
+                name="read file",
+                group="tools",
+                input="Read src/example.py.",
+                expected_output=None,
+                mock_tools={"read": "file text"},
+            ),
+        ),
+    )
+    prompt = RenderedPrompt(
+        name="Assistant",
+        version="1.0.0",
+        content="",
+        variables={},
+        skills=(),
+        tool_metadata=(
+            {
+                "name": "read",
+                "summary": "Read a file.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}},
+                    "required": ["path"],
+                },
+            },
+        ),
+    )
+
+    validate_tool_scenarios(prompt, suite)
+    prompt_without_schema = RenderedPrompt(
+        name=prompt.name,
+        version=prompt.version,
+        content=prompt.content,
+        variables={},
+        skills=(),
+        tool_metadata=({"name": "read", "summary": "Read a file."},),
+    )
+    with pytest.raises(ValueError, match="parameters JSON Schema"):
+        validate_tool_scenarios(prompt_without_schema, suite)
+
+
+def test_configured_pi_agent_tools_have_unique_names_and_schemas() -> None:
+    import yaml
+
+    config = yaml.safe_load(Path(".spb/config.yaml").read_text(encoding="utf-8"))
+    tools = config["tool_provider_metadata"]["pi_agent"]["tools"]
+    names = [tool["name"] for tool in tools]
+
+    assert len(names) == len(set(names))
+    assert tools
+    for tool in tools:
+        schema = tool["parameters"]
+        assert schema["type"] == "object"
+        assert isinstance(schema["properties"], dict)
+        assert set(schema.get("required", [])) <= set(schema["properties"])
+        assert schema["additionalProperties"] is False
 
 
 def test_g_eval_suite_requires_expected_output(tmp_path: Path) -> None:

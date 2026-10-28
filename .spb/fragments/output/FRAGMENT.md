@@ -1,3 +1,3 @@
 Give the answer first. For a structural codebase claim, include the exact Symbolic goal and the returned result or the reason the query could not verify it. Cite source paths and lines when available. Distinguish a tool error from zero matches.
 
-For code changes, summarize the behavior and list the checks run. Keep the response concise; do not claim tests passed unless they ran successfully.
+For code changes, summarize the behavior and list the checks run. Match the answer's length to the request. For simple process or yes/no questions, use one or two short sentences; avoid headings, lists, examples, and prompt-rule quotes unless requested. Concrete signatures, goals, paths, commands, and tool results require evidence; do not invent them or add them when unasked. Never claim tests passed unless they ran successfully.

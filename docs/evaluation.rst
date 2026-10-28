@@ -100,6 +100,38 @@ Test cases
    Optional reference output. It is required for every case when the suite uses
    ``g_eval``.
 
+Mock configured tools
+---------------------
+
+A test case can offer selected configured tools to the model and return fixed
+mock results. Each offered tool must have a ``parameters`` JSON Schema in the
+selected harness's ``tool_provider_metadata``. The mock map keys are configured
+tool names; each value is the string returned by that tool. No real tool code
+runs.
+
+Use ``expected_tool_calls`` to assert the full ordered call trace, including
+each call's exact argument mapping. An empty list asserts that the model made no
+tool calls. DeepEval receives both actual and expected tool traces when scoring
+these cases. A trace mismatch fails the evaluation command and is recorded in
+the result artifact.
+
+.. code-block:: yaml
+
+   tests:
+     - name: reads the requested file
+       input: Inspect src/example.py and explain what count_records returns.
+       mock_tools:
+         read: "def count_records(records): return len(records)"
+       expected_tool_calls:
+         - name: read
+           arguments:
+             path: src/example.py
+       expected_output: It returns the number of records in its input list.
+
+The tool schema is read from ``.spb/config.yaml`` for the chosen harness. A
+case only offers tools listed under ``mock_tools``. Cases without
+``mock_tools`` use direct model responses and do not send tool definitions.
+
 Validate and run
 ----------------
 
@@ -124,8 +156,8 @@ Run the suite:
        --suite .spb/evals/coder.yaml --fail-under 0.75
 
 The result records prompt and suite digests, model identity, visible variables,
-resolved skills, generated outputs, metric scores and reasons, and the overall
-mean score.
+resolved skills, generated outputs, mock-tool call traces, metric scores and
+reasons, and the overall mean score.
 
 Compare a compressed prompt
 ---------------------------
@@ -173,15 +205,46 @@ overall and per-group score drops.
 Current boundaries
 ------------------
 
-Evaluation is single-turn and direct-model only. It does not execute harness
-tools, simulate agent trajectories, or run multi-turn conversations.
+Evaluation uses one user turn and may run model-selected mock tools. It never
+executes real harness tools, simulates multi-turn user conversations, or runs
+full agent trajectories.
 
-Local llama.cpp model
----------------------
+Hugging Face Inference Endpoint
+-------------------------------
+
+The project suite ``.spb/evals/python-assistant-hf.yaml`` targets the Hugging
+Face endpoint through the ``spb-hf-qwen`` model alias. Add this entry to
+``extra-openai-models.yaml`` in the directory returned by ``llm user_dir``:
+
+.. code-block:: yaml
+
+   - model_id: spb-hf-qwen
+     model_name: /repository/Qwen3.8-27B-UD-Q4_K_M.gguf
+     api_base: https://ogabjrf7kkaavl1f.endpoints.huggingface.cloud/v1/
+     api_key_name: openai
+     supports_tools: true
+
+The model name is the ID returned by this endpoint's authenticated
+``/v1/models`` response. Set ``supports_tools: true`` when the endpoint accepts
+OpenAI-compatible tool calls; this enables tool schemas in the ``llm`` client.
+``llm`` reads ``OPENAI_API_KEY`` for this custom model. If the token is stored
+as ``HF_TOKEN``, pass it without writing it to the project configuration:
+
+.. code-block:: console
+
+   $ OPENAI_API_KEY="$HF_TOKEN" pipenv run llm -m spb-hf-qwen "Reply with pong"
+   $ OPENAI_API_KEY="$HF_TOKEN" pipenv run spb eval run \
+       .spb/prompts/python-assistant.md --harness pi_agent \
+       --suite .spb/evals/python-assistant-hf.yaml
+
+Keep the endpoint running while the evaluation runs. The suite uses the same
+endpoint for generation and G-Eval judging, so each case makes requests for
+both roles.
 
 The repository contains ``scripts/run-local-llama.sh`` for the cached
-``unsloth/Qwen3.6-35B-A3B-GGUF:Q8_0`` model. The launcher exposes an
+``unsloth/Qwen3.8-27B-GGUF:Q8_0`` model. The launcher exposes an
 OpenAI-compatible endpoint on port 8080 with the ``spb-local-qwen`` alias.
+It disables reasoning for evaluation runs and defaults to a 32K-token context.
 
 Follow the complete setup and health-check procedure in the repository's
 `local llama.cpp runbook <https://github.com/iwillig/system-prompt-builder/blob/main/docs/runbooks/local-llama-cpp.md>`_.

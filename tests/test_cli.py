@@ -6,6 +6,22 @@ import yaml
 from click.testing import CliRunner
 
 
+def test_eval_fails_when_mock_tool_trace_does_not_match() -> None:
+    import click
+
+    from spb.cli import _check_tool_call_expectations
+
+    with pytest.raises(click.ClickException, match="Expected tool-call trace"):
+        _check_tool_call_expectations(
+            (
+                {
+                    "name": "read requested file",
+                    "tool_calls_passed": False,
+                },
+            )
+        )
+
+
 def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     from spb.cli import cli
 
@@ -47,6 +63,7 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     ) == "{{{fragments.instructions}}}\n"
     assert ".spb/fragments/project_instructions/FRAGMENT.md" in result.output
     assert ".spb/layouts/project-assistant.md" in result.output
+    assert ".spb/evals/" in result.output
     assert (project_root / ".spb" / "skills" / "local").is_dir()
     assert (project_root / ".spb" / "evals").is_dir()
     assert ".spb/evals/" in result.output
