@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 from statistics import median
@@ -303,18 +304,40 @@ def evaluate_fragment_plan(
     suite_sha256: str,
     harness: str,
     noise_floor: float = 0.1,
+    on_progress: Callable[[str], None] | None = None,
 ) -> FragmentAblationReport:
     if not 0 <= noise_floor <= 1:
         raise ValueError("Noise floor must be between 0 and 1")
     if plan.cases != len(suite.cases):
         raise ValueError("Plan case count does not match suite")
 
-    def runs(prompt: RenderedPrompt) -> tuple[EvaluationRun, ...]:
+    def runs(prompt: RenderedPrompt, label: str) -> tuple[EvaluationRun, ...]:
         expected_hash = hashlib.sha256(prompt.content.encode("utf-8")).hexdigest()
-        results = tuple(
-            run_evaluation(prompt, suite, suite_sha256=suite_sha256, harness=harness)
-            for _ in range(plan.repeats)
-        )
+        results = []
+        for repeat in range(1, plan.repeats + 1):
+            prefix = f"{label}, repeat {repeat}/{plan.repeats}"
+            if on_progress is not None:
+                on_progress(f"{prefix}: starting")
+            run_kwargs = (
+                {
+                    "on_progress": lambda message, prefix=prefix: on_progress(
+                        f"{prefix}: {message}"
+                    )
+                }
+                if on_progress is not None
+                else {}
+            )
+            results.append(
+                run_evaluation(
+                    prompt,
+                    suite,
+                    suite_sha256=suite_sha256,
+                    harness=harness,
+                    **run_kwargs,
+                )
+            )
+            if on_progress is not None:
+                on_progress(f"{prefix}: complete")
         if any(
             run.prompt_sha256 != expected_hash
             or run.suite_sha256 != suite_sha256
@@ -324,12 +347,12 @@ def evaluate_fragment_plan(
             raise ValueError(
                 "Evaluation results do not match the planned prompt or suite"
             )
-        return results
+        return tuple(results)
 
-    baseline = runs(plan.baseline)
+    baseline = runs(plan.baseline, "baseline")
     outcomes = []
     for variant in plan.variants:
-        current = runs(variant.prompt)
+        current = runs(variant.prompt, f"{variant.alias} {variant.label}")
         outcome = aggregate_variant(baseline, current, noise_floor=noise_floor)
         outcome.update(
             {

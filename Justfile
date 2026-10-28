@@ -56,9 +56,9 @@ fragment-ablate-plan alias="routing":
 fragment-rate-plan alias="routing" rates="0.5,0.3":
     pipenv run spb eval ablate .spb/prompts/python-assistant.md --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent --mode rate --fragments {{quote(alias)}} --rates {{quote(rates)}} --dry-run --max-case-generations 153
 
-# Run a bounded live drop evaluation; credentials must already be configured.
+# Run a bounded live drop evaluation with HF_TOKEN as the model API key.
 fragment-ablate-live alias="routing":
-    pipenv run spb eval ablate .spb/prompts/python-assistant.md --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent --mode drop --fragments {{quote(alias)}} --repeats 3 --max-case-generations 102 --output "build/evals/fragment-ablation-$(date -u +%Y%m%dT%H%M%SZ).yaml"
+    OPENAI_API_KEY="${HF_TOKEN:?Set HF_TOKEN before running fragment-ablate-live}" pipenv run spb eval ablate .spb/prompts/python-assistant.md --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent --mode drop --fragments {{quote(alias)}} --repeats 3 --max-case-generations 104 --output "build/evals/fragment-ablation-$(date -u +%Y%m%dT%H%M%SZ).yaml"
 
 # Make this editable checkout the machine's default spb command.
 install-dev:

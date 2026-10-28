@@ -265,6 +265,62 @@ def test_metric_builders_use_the_configured_judge_and_fixed_steps() -> None:
     assert calls[1]["evaluation_steps"] is not calls[2]["evaluation_steps"]
 
 
+def test_run_evaluation_reports_case_stages_without_endpoint_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    llm = pytest.importorskip("llm")
+    pytest.importorskip("deepeval")
+    from spb.evaluation import (
+        EvaluationCase,
+        EvaluationSuite,
+        MetricSpec,
+        run_evaluation,
+    )
+    from spb.rendering import RenderedPrompt
+
+    class FakeMetric:
+        score = 0.9
+        reason = "meets the reference"
+
+        def is_successful(self) -> bool:
+            return True
+
+    monkeypatch.setattr(
+        llm,
+        "get_model",
+        lambda name: type(
+            "FakeModel",
+            (),
+            {"prompt": lambda self, *a, **kw: self, "text": lambda self: "ok"},
+        )(),
+    )
+    monkeypatch.setattr("spb.evaluation._llm_judge", lambda *args: object())
+    monkeypatch.setattr(
+        "spb.evaluation._build_metric", lambda *args, **kwargs: FakeMetric()
+    )
+    monkeypatch.setattr(
+        "spb.evaluation._measure_metric_with_retry", lambda *a, **kw: None
+    )
+    messages: list[str] = []
+    run_evaluation(
+        RenderedPrompt("Example", "1.0.0", "system", {}, ()),
+        EvaluationSuite(
+            "generator",
+            "judge",
+            (MetricSpec("answer_relevancy", 0.7),),
+            (EvaluationCase("sample", "default", "question", None),),
+        ),
+        suite_sha256="suite",
+        harness="pi_agent",
+        on_progress=messages.append,
+    )
+    assert messages == [
+        "case 1/1 'sample': generating answer",
+        "case 1/1 'sample': judging 'answer_relevancy'",
+        "case 1/1 'sample': complete",
+    ]
+
+
 _JSON_ERROR = (
     "Evaluation LLM outputted an invalid JSON. Please use a better evaluation model."
 )
@@ -292,9 +348,15 @@ def test_measure_retries_on_judge_json_error(
     monkeypatch.setattr("spb.evaluation._JUDGE_RETRY_DELAY_SECONDS", 0.0)
     metric = _FlakyMetric(2, _JSON_ERROR)
 
-    _measure_metric_with_retry(metric, object())
+    retries = []
+    _measure_metric_with_retry(
+        metric,
+        object(),
+        on_retry=lambda attempt, total: retries.append((attempt, total)),
+    )
 
     assert metric.attempts == 3
+    assert retries == [(2, 3), (3, 3)]
 
 
 def test_measure_gives_up_after_max_attempts(

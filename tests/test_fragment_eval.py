@@ -258,8 +258,11 @@ def test_cli_writes_live_report_with_stubbed_evaluation(
 
     calls = []
 
-    def fake_run(prompt, suite, *, suite_sha256, harness):
+    def fake_run(prompt, suite, *, suite_sha256, harness, on_progress=None):
         calls.append(prompt.content)
+        if on_progress is not None:
+            on_progress("case 1/1 'example': generating answer")
+            on_progress("case 1/1 'example': judging 'quality'")
         return replace(
             _run(),
             prompt_sha256=hashlib.sha256(prompt.content.encode("utf-8")).hexdigest(),
@@ -290,6 +293,97 @@ def test_cli_writes_live_report_with_stubbed_evaluation(
     assert result.exit_code == 0, result.output
     assert len(calls) == 6
     assert "NO_REGRESSION_DETECTED" in result.output
+    assert "baseline, repeat 1/3: starting" in result.output
+    assert (
+        "baseline, repeat 1/3: case 1/1 'example': judging 'quality'" in result.output
+    )
+    assert "routing drop, repeat 3/3: complete" in result.output
+    assert "mean score 0.900 -> 0.900" in result.output
+    assert f"Report: {output}" in result.output
     artifact = yaml.safe_load(output.read_text())
     assert artifact["planned_case_generations"] == 102
     assert artifact["outcomes"][0]["transformation"] == "drop"
+
+
+def test_cli_explains_exploratory_verdict_and_disagreeing_pass_flags(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from spb.cli import cli
+
+    def fake_run(prompt, suite, *, suite_sha256, harness, on_progress):
+        on_progress("case 1/1 'example': judging 'quality'")
+        return replace(
+            _run(passed=prompt.content == baseline_prompt.content),
+            prompt_sha256=hashlib.sha256(prompt.content.encode("utf-8")).hexdigest(),
+            suite_sha256=suite_sha256,
+            model=suite.model,
+        )
+
+    baseline_prompt = render_prompt(
+        Path("."), Path(".spb/prompts/python-assistant.md"), harness="pi_agent"
+    )
+    monkeypatch.setattr("spb.fragment_eval.run_evaluation", fake_run)
+    result = CliRunner().invoke(
+        cli,
+        [
+            "eval",
+            "ablate",
+            ".spb/prompts/python-assistant.md",
+            "--suite",
+            ".spb/evals/python-assistant-hf.yaml",
+            "--harness",
+            "pi_agent",
+            "--mode",
+            "drop",
+            "--fragments",
+            "routing",
+            "--repeats",
+            "1",
+            "--output",
+            str(tmp_path / "out.yaml"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Exploratory result: fewer than three repeats" in result.output
+    assert "metric majority failure: example/quality" in result.output
+    assert (
+        "baseline 1/1 pass (median 0.900); variant 0/1 pass (median 0.900)"
+        in result.output
+    )
+    assert "Warning: equal scores have different pass flags" in result.output
+
+
+def test_cli_shows_last_phase_when_judging_fails(monkeypatch, tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    def failing_run(prompt, suite, *, suite_sha256, harness, on_progress):
+        on_progress("case 1/17 'reads before editing': judging 'Prompt compliance'")
+        raise ValueError("Evaluation LLM outputted an invalid JSON")
+
+    monkeypatch.setattr("spb.fragment_eval.run_evaluation", failing_run)
+    output = tmp_path / "no-report.yaml"
+    result = CliRunner().invoke(
+        cli,
+        [
+            "eval",
+            "ablate",
+            ".spb/prompts/python-assistant.md",
+            "--suite",
+            ".spb/evals/python-assistant-hf.yaml",
+            "--harness",
+            "pi_agent",
+            "--mode",
+            "drop",
+            "--fragments",
+            "routing",
+            "--output",
+            str(output),
+        ],
+    )
+    assert result.exit_code != 0
+    assert (
+        "baseline, repeat 1/3: case 1/17 'reads before editing': judging"
+        in result.output
+    )
+    assert "invalid JSON" in result.output
+    assert not output.exists()

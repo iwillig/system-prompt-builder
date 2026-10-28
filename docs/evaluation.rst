@@ -211,6 +211,16 @@ verdict applies only to the evaluated suite and does not establish that the
 fragment is universally redundant or safe to compress. Fewer than three
 repeats are exploratory and cannot yield ``NO_REGRESSION_DETECTED``.
 
+A live run reports the current baseline or variant, repeat, case, and whether
+it is generating an answer or judging a metric. If a run fails, the last
+progress line identifies the stage; invalid judge JSON retries are also shown.
+No partial report is written. After a successful run, the CLI shows the
+baseline and variant mean scores and the
+pass counts, median scores, and threshold for each reported metric reason.
+It labels runs with fewer than three repeats as exploratory and warns when
+equal scores have different pass flags. Read the detailed judge responses in
+the YAML report before relying on such a verdict.
+
 The preview count is ``(1 + variants) * repeats * cases``. It counts case
 generations, not judge calls, retries, tokens, or total endpoint requests.
 ``--max-case-generations N`` rejects a plan above that count before model

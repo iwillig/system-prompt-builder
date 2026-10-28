@@ -481,6 +481,7 @@ def eval_ablate(
             suite_sha256=_sha256(suite.read_text(encoding="utf-8")),
             harness=harness,
             noise_floor=noise_floor,
+            on_progress=click.echo,
         )
         result_path = write_fragment_report(
             report,
@@ -494,12 +495,48 @@ def eval_ablate(
         )
     except (OSError, ValueError) as error:
         raise click.ClickException(str(error)) from error
+    if report.plan.repeats < 3:
+        click.echo(
+            "Exploratory result: fewer than three repeats; failures are not confirmed."
+        )
     for outcome in report.outcomes:
+        baseline_mean = sum(run.mean_score for run in report.baseline_runs) / len(
+            report.baseline_runs
+        )
+        variant_mean = sum(run["mean_score"] for run in outcome["runs"]) / len(
+            outcome["runs"]
+        )
         click.echo(
             f"{outcome['alias']} {outcome['transformation']}: {outcome['verdict']} "
-            f"({', '.join(outcome['reasons']) or 'no detected change'})"
+            f"(mean score {baseline_mean:.3f} -> {variant_mean:.3f})"
         )
-    click.echo(result_path)
+        metric_rows = {
+            f"{metric['case']}/{metric['metric']}": metric
+            for metric in outcome["metrics"]
+        }
+        for reason in outcome["reasons"]:
+            click.echo(f"  {reason}")
+            key = reason.split(": ", 1)[-1]
+            if key in metric_rows:
+                row = metric_rows[key]
+                click.echo(
+                    f"    baseline {row['baseline_passes']}/{report.plan.repeats} pass "
+                    f"(median {row['baseline_median']:.3f}); "
+                    f"variant {row['variant_passes']}/{report.plan.repeats} pass "
+                    f"(median {row['variant_median']:.3f}); "
+                    f"threshold {row['threshold']:.3f}"
+                )
+                if (
+                    row["baseline_scores"] == row["variant_scores"]
+                    and row["baseline_passes"] != row["variant_passes"]
+                ):
+                    click.echo(
+                        "    Warning: equal scores have different pass flags; "
+                        "inspect judge results before trusting this verdict."
+                    )
+        if not outcome["reasons"]:
+            click.echo("  No detected change in the tested cases.")
+    click.echo(f"Report: {result_path}")
 
 
 @cli.group()

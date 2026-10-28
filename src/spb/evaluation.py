@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -167,7 +168,12 @@ def _is_judge_json_error(error: ValueError) -> bool:
     return "invalid json" in str(error).lower()
 
 
-def _measure_metric_with_retry(metric: Any, test_case: Any) -> None:
+def _measure_metric_with_retry(
+    metric: Any,
+    test_case: Any,
+    *,
+    on_retry: Callable[[int, int], None] | None = None,
+) -> None:
     """Run metric.measure, retrying transient judge JSON-parse failures.
 
     The reference-free judge (G-Eval) occasionally emits malformed JSON; DeepEval
@@ -181,6 +187,8 @@ def _measure_metric_with_retry(metric: Any, test_case: Any) -> None:
         except ValueError as error:
             if not _is_judge_json_error(error) or attempt + 1 >= _JUDGE_MAX_ATTEMPTS:
                 raise
+            if on_retry is not None:
+                on_retry(attempt + 2, _JUDGE_MAX_ATTEMPTS)
             time.sleep(_JUDGE_RETRY_DELAY_SECONDS)
 
 
@@ -190,6 +198,7 @@ def run_evaluation(
     *,
     suite_sha256: str,
     harness: str,
+    on_progress: Callable[[str], None] | None = None,
 ) -> EvaluationRun:
     """Generate model responses, including mock-tool chains, and evaluate them."""
     try:
@@ -221,7 +230,10 @@ def run_evaluation(
     results: list[dict[str, Any]] = []
     scores: list[float] = []
     validate_tool_scenarios(prompt, suite)
-    for case in suite.cases:
+    for case_number, case in enumerate(suite.cases, 1):
+        case_label = f"case {case_number}/{len(suite.cases)} {case.name!r}"
+        if on_progress is not None:
+            on_progress(f"{case_label}: generating answer")
         tool_calls: list[dict[str, Any]] = []
         if case.mock_tools:
             tools = _mock_tools(prompt, case, llm)
@@ -265,6 +277,8 @@ def run_evaluation(
         )
         metric_results: list[dict[str, Any]] = []
         for spec in suite.metrics:
+            if on_progress is not None:
+                on_progress(f"{case_label}: judging {spec.name or spec.type!r}")
             metric = _build_metric(
                 spec,
                 AnswerRelevancyMetric,
@@ -273,7 +287,21 @@ def run_evaluation(
                 judge,
                 include_tool_trace=case.expected_tool_calls is not None,
             )
-            _measure_metric_with_retry(metric, test_case)
+            retry_progress = None
+            if on_progress is not None:
+
+                def report_retry(
+                    attempt: int,
+                    total: int,
+                    label: str = case_label,
+                    emit: Callable[[str], None] = on_progress,
+                ) -> None:
+                    emit(
+                        f"{label}: judge returned invalid JSON; retry {attempt}/{total}"
+                    )
+
+                retry_progress = report_retry
+            _measure_metric_with_retry(metric, test_case, on_retry=retry_progress)
             score = float(metric.score)
             scores.append(score)
             metric_results.append(
@@ -285,6 +313,8 @@ def run_evaluation(
                     "reason": metric.reason,
                 }
             )
+        if on_progress is not None:
+            on_progress(f"{case_label}: complete")
         results.append(
             {
                 "name": case.name,
