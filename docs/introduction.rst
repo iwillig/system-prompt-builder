@@ -77,10 +77,10 @@ Render the prompt for Pi:
 .. code-block:: console
 
    $ spb render .spb/prompts/project-assistant.md --harness pi_agent
-   build/pi_agent/project-assistant.md
+   .spb/build/pi_agent/project-assistant.md
 
 The command also writes
-``build/pi_agent/project-assistant.manifest.yaml``. The manifest identifies the
+``.spb/build/pi_agent/project-assistant.manifest.yaml``. The manifest identifies the
 prompt version, source and output hashes, selected harness, fragment sources,
 variables, and resolved skills.
 
@@ -91,7 +91,7 @@ Link the rendered artifact into Pi's project configuration:
 
 .. code-block:: console
 
-   $ spb link build/pi_agent/project-assistant.md .pi/SYSTEM.md
+   $ spb link .spb/build/pi_agent/project-assistant.md .pi/SYSTEM.md
    .pi/SYSTEM.md
 
 Start Pi from the project root:

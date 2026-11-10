@@ -132,7 +132,7 @@ After initialization, validate and render the starter prompt:
    $ spb validate
    Validated 1 prompt(s).
    $ spb render .spb/prompts/project-assistant.md --harness pi_agent
-   build/pi_agent/project-assistant.md
+   .spb/build/pi_agent/project-assistant.md
 
 Edit the configuration and prompt source to match the repository before using
 the generated artifact in an agent harness.

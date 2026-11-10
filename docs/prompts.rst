@@ -312,14 +312,14 @@ Rendering ``.spb/prompts/coder.md`` for ``pi_agent`` writes:
 
 .. code-block:: text
 
-   build/pi_agent/coder.md
-   build/pi_agent/coder.manifest.yaml
+   .spb/build/pi_agent/coder.md
+   .spb/build/pi_agent/coder.manifest.yaml
 
 With ``--compress``, it also writes:
 
 .. code-block:: text
 
-   build/pi_agent/coder.compressed.md
+   .spb/build/pi_agent/coder.compressed.md
 
 For a fragment-based prompt, only aliases listed under
 ``compressible_fragments`` are compressed; every other fragment, the layout,

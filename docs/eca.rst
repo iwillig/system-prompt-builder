@@ -24,7 +24,7 @@ Render the prompt:
 .. code-block:: console
 
    $ spb render .spb/prompts/coder.md --harness eca
-   build/eca/coder.md
+   .spb/build/eca/coder.md
 
 Use the rendered artifact in an ECA agent configuration. ECA documents the
 ``prompts.chat`` file reference as its custom agent prompt interface.
@@ -36,7 +36,7 @@ Use the rendered artifact in an ECA agent configuration. ECA documents the
        "spb": {
          "inherit": "code",
          "prompts": {
-           "chat": "${file:/absolute/path/to/build/eca/coder.md}"
+           "chat": "${file:/absolute/path/to/.spb/build/eca/coder.md}"
          }
        }
      }

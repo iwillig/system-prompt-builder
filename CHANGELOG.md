@@ -27,6 +27,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Default render, evaluation, and benchmark artifacts now go under `.spb/build/`.
+  Existing `build/` artifacts are not moved; update links and render again.
 - `spb init` now creates a starter prompt with a fragment and layout.
 - The Python assistant prompt uses the configured project name in its identity.
 

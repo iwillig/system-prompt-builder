@@ -50,8 +50,8 @@ spelling. For existing projects, rename ``project-name`` to
 ``skill-providers`` to ``skill_providers``, and ``skill-root`` to
 ``skill_root``. Replace the harness name ``pi-agent`` with ``pi_agent``
 in configuration and in ``--harness`` arguments. Existing rendered artifacts
-under ``build/pi-agent/`` are not moved; render again to write
-``build/pi_agent/``.
+under ``build/`` are not moved; render again to write to
+``.spb/build/pi_agent/``. Update links to point to the new location.
 
 ``version``
    Configuration format version. The current format uses ``1``.
@@ -172,5 +172,5 @@ Generated project files
    Resolved Git provider revisions and skill digests. Rendering updates entries
    for the Git providers used by the current prompt.
 
-``build/``
+``.spb/build/``
    Rendered prompts, manifests, compressed variants, and evaluation artifacts.

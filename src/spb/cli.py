@@ -149,7 +149,7 @@ def render(
     except ValueError as error:
         raise click.ClickException(str(error)) from error
 
-    output_path = project_root / "build" / harness / f"{prompt.stem}.md"
+    output_path = project_root / ".spb" / "build" / harness / f"{prompt.stem}.md"
     manifest_path = output_path.with_suffix(".manifest.yaml")
     manifest = _manifest(prompt, harness, result, compression)
     try:
@@ -234,6 +234,7 @@ def eval_run(
                 evaluation_run,
                 output
                 or project_root
+                / ".spb"
                 / "build"
                 / "evals"
                 / rendered.name
@@ -320,6 +321,7 @@ def eval_compare(
             comparison,
             output
             or project_root
+            / ".spb"
             / "build"
             / "evals"
             / rendered.name
@@ -391,6 +393,7 @@ def benchmark_run(
             evaluation_run,
             output
             or project_root
+            / ".spb"
             / "build"
             / "benchmarks"
             / rendered.name
@@ -462,6 +465,7 @@ def benchmark_compare(
             comparison,
             output
             or project_root
+            / ".spb"
             / "build"
             / "benchmarks"
             / candidate_prompt.name

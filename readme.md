@@ -88,14 +88,14 @@ spb render .spb/prompts/project-assistant.md --harness pi_agent
 The render command writes:
 
 ```text
-build/pi_agent/project-assistant.md
-build/pi_agent/project-assistant.manifest.yaml
+.spb/build/pi_agent/project-assistant.md
+.spb/build/pi_agent/project-assistant.manifest.yaml
 ```
 
 Link the rendered prompt into a Pi project:
 
 ```bash
-spb link build/pi_agent/project-assistant.md .pi/SYSTEM.md
+spb link .spb/build/pi_agent/project-assistant.md .pi/SYSTEM.md
 pi --approve
 ```
 

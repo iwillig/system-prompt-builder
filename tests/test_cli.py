@@ -53,7 +53,8 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     assert validation.exit_code == 0
     assert "Validated 1 prompt(s)." in validation.output
     assert rendering.exit_code == 0
-    artifact = project_root / "build" / "pi_agent" / "project-assistant.md"
+    artifact = project_root / ".spb" / "build" / "pi_agent" / "project-assistant.md"
+    assert not (project_root / "build").exists()
     assert artifact.read_text(encoding="utf-8") == (
         "You are a coding agent running in pi_agent.\n\n"
         "Read the relevant project files before making changes.\n"
@@ -87,7 +88,7 @@ def test_init_command_supports_a_custom_harness(tmp_path: Path) -> None:
     )
     assert rendering.exit_code == 0, rendering.output
     assert "running in eca" in (
-        tmp_path / "build" / "eca" / "project-assistant.md"
+        tmp_path / ".spb" / "build" / "eca" / "project-assistant.md"
     ).read_text(encoding="utf-8")
 
 
@@ -203,7 +204,7 @@ def test_render_rejects_a_prompt_outside_spb(tmp_path: Path) -> None:
 
     assert result.exit_code != 0
     assert "Prompt must be under .spb/prompts/" in result.output
-    assert not (tmp_path / "build").exists()
+    assert not (tmp_path / ".spb" / "build").exists()
 
 
 @pytest.mark.parametrize(
@@ -310,7 +311,7 @@ You are a coding agent for {{{project_name}}}.
         ],
     )
 
-    output_path = tmp_path / "build" / "pi_agent" / "coder.md"
+    output_path = tmp_path / ".spb" / "build" / "pi_agent" / "coder.md"
     manifest_path = output_path.with_suffix(".manifest.yaml")
     assert result.exit_code == 0
     assert output_path.read_text(encoding="utf-8") == (
@@ -361,7 +362,7 @@ def test_render_command_records_layout_in_manifest(tmp_path: Path) -> None:
     )
 
     assert result.exit_code == 0
-    output_path = tmp_path / "build" / "pi_agent" / "assistant.md"
+    output_path = tmp_path / ".spb" / "build" / "pi_agent" / "assistant.md"
     assert (
         output_path.read_text(encoding="utf-8")
         == "<identity>\nYou help.\n</identity>\n"
@@ -570,7 +571,7 @@ skill_providers:
     )
     assert result.exit_code == 0
     assert "Use strict TypeScript." in (
-        tmp_path / "build" / "pi_agent" / "coder.md"
+        tmp_path / ".spb" / "build" / "pi_agent" / "coder.md"
     ).read_text(encoding="utf-8")
     assert lockfile["providers"]["team"]["revision"] == revision
     assert lockfile["providers"]["team"]["skills"][0]["reference"] == "team/typescript"
@@ -613,7 +614,7 @@ skill_providers: []
         ],
     )
 
-    output_path = tmp_path / "build" / "pi_agent" / "coder.md"
+    output_path = tmp_path / ".spb" / "build" / "pi_agent" / "coder.md"
     compressed_path = output_path.with_suffix(".compressed.md")
     manifest = yaml.safe_load(
         output_path.with_suffix(".manifest.yaml").read_text(encoding="utf-8")
@@ -629,7 +630,7 @@ skill_providers: []
 def test_link_creates_a_symlink_to_a_compiled_artifact(tmp_path: Path) -> None:
     from spb.cli import cli
 
-    source = tmp_path / "build" / "pi_agent" / "coder.md"
+    source = tmp_path / ".spb" / "build" / "pi_agent" / "coder.md"
     source.parent.mkdir(parents=True)
     source.write_text("Compiled prompt.\n", encoding="utf-8")
     destination = tmp_path / "consumer" / ".agent" / "system.md"
@@ -688,7 +689,7 @@ def test_fragment_render_manifest_records_source_digest(tmp_path: Path) -> None:
     ]
     result = CliRunner().invoke(cli, args)
     assert result.exit_code == 0, result.output
-    manifest_path = tmp_path / "build" / "pi_agent" / "one.manifest.yaml"
+    manifest_path = tmp_path / ".spb" / "build" / "pi_agent" / "one.manifest.yaml"
     first = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
     assert first["fragments"] == [
         {
@@ -753,7 +754,7 @@ def test_render_compresses_only_declared_fragment_aliases(tmp_path: Path) -> Non
         ],
     )
     assert result.exit_code == 0, result.output
-    output = tmp_path / "build" / "pi_agent" / "project-assistant.md"
+    output = tmp_path / ".spb" / "build" / "pi_agent" / "project-assistant.md"
     assert output.with_suffix(".compressed.md").read_text() == output.read_text()
     manifest = yaml.safe_load(output.with_suffix(".manifest.yaml").read_text())
     assert manifest["compression"]["settings"]["scope"] == "selected_fragments"
@@ -783,4 +784,6 @@ def test_render_rejects_fragment_compression_without_opt_in(tmp_path: Path) -> N
     )
     assert result.exit_code != 0
     assert "compressible_fragments" in result.output
-    assert not (tmp_path / "build" / "pi_agent" / "project-assistant.md").exists()
+    assert not (
+        tmp_path / ".spb" / "build" / "pi_agent" / "project-assistant.md"
+    ).exists()

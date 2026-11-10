@@ -70,6 +70,6 @@ MARKDOWN
   "$environment/bin/spb" validate --project-root "$project"
   "$environment/bin/spb" render "$project/.spb/prompts/demo.md" \
     --harness pi_agent --project-root "$project"
-  diff -u "$project/expected.md" "$project/build/pi_agent/demo.md"
-  grep -Fq 'layout:' "$project/build/pi_agent/demo.manifest.yaml"
+  diff -u "$project/expected.md" "$project/.spb/build/pi_agent/demo.md"
+  grep -Fq 'layout:' "$project/.spb/build/pi_agent/demo.manifest.yaml"
 done

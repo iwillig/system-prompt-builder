@@ -190,7 +190,7 @@ write an evaluation result.
      - Directory containing ``.spb/config.yaml``.
 
 The default output is
-``build/evals/<prompt-name>/<version>/result.yaml``. The command also fails when
+``.spb/build/evals/<prompt-name>/<version>/result.yaml``. The command also fails when
 any metric reports that its required threshold was not met.
 
 ``spb eval compare``
@@ -232,7 +232,7 @@ Compare the full prompt with a compressed variant using the same suite.
      - Directory containing ``.spb/config.yaml``.
 
 The default output is
-``build/evals/<prompt-name>/<version>/comparison.yaml``.
+``.spb/build/evals/<prompt-name>/<version>/comparison.yaml``.
 
 ``spb benchmark run``
 ---------------------
@@ -273,7 +273,7 @@ Evaluate one prompt release and gate its overall and per-group scores.
      - Directory containing ``.spb/config.yaml``.
 
 The default output is
-``build/benchmarks/<prompt-name>/<version>/result.yaml``.
+``.spb/build/benchmarks/<prompt-name>/<version>/result.yaml``.
 
 ``spb benchmark compare``
 -------------------------
@@ -316,4 +316,4 @@ then gate overall and per-group score regressions.
      - Directory containing ``.spb/config.yaml``.
 
 The default output is
-``build/benchmarks/<candidate-name>/<candidate-version>/comparison.yaml``.
+``.spb/build/benchmarks/<candidate-name>/<candidate-version>/comparison.yaml``.
