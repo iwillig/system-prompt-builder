@@ -7,6 +7,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-10
+
 ### Added
 
 - Added `just install-dev` to run the editable checkout as `spb` from any
@@ -101,7 +103,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added direct-model DeepEval suites and versioned prompt benchmarks.
 - Added symbolic linking for generated prompt artifacts.
 
-[Unreleased]: https://github.com/iwillig/system-prompt-builder/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/iwillig/system-prompt-builder/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/iwillig/system-prompt-builder/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/iwillig/system-prompt-builder/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/iwillig/system-prompt-builder/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/iwillig/system-prompt-builder/compare/v0.1.1...v0.2.0
