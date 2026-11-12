@@ -7,6 +7,19 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-12
+
+### Added
+
+- Configure prompt and harness targets for `spb render`, and artifact links for
+  `spb link`, so both commands can run without positional arguments.
+- `spb init` creates an empty `.spb/evals/` directory for evaluation suites.
+
+### Changed
+
+- Validate configured render targets and links before use, and check all links
+  before creating any in a batch.
+
 ## [0.3.1] - 2026-11-10
 
 ### Added
@@ -103,7 +116,8 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Added direct-model DeepEval suites and versioned prompt benchmarks.
 - Added symbolic linking for generated prompt artifacts.
 
-[Unreleased]: https://github.com/iwillig/system-prompt-builder/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/iwillig/system-prompt-builder/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/iwillig/system-prompt-builder/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/iwillig/system-prompt-builder/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/iwillig/system-prompt-builder/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/iwillig/system-prompt-builder/compare/v0.2.0...v0.2.1
