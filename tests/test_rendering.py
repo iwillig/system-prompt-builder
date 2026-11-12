@@ -431,19 +431,28 @@ def test_fragments_require_layout_and_reject_reserved_variable(tmp_path: Path) -
         render_prompt(tmp_path, prompt, harness="pi_agent")
 
 
-def test_project_assistant_fragment_migration_preserves_rendered_bytes() -> None:
-    import hashlib
-
+def test_project_assistant_renders_selected_fragments() -> None:
     from spb.rendering import render_prompt
 
     root = Path(__file__).resolve().parents[1]
     result = render_prompt(
         root, root / ".spb" / "prompts" / "project-assistant.md", harness="pi_agent"
     )
-    assert [fragment.alias for fragment in result.fragments] == ["instructions"]
-    assert hashlib.sha256(result.content.encode("utf-8")).hexdigest() == (
-        "fa05b636972a95e9edc71933bc9565fe421d23f82001604c23667e41f96c9e48"
-    )
+    assert [fragment.alias for fragment in result.fragments] == [
+        "instructions",
+        "communication_style",
+        "debugging",
+        "agent_loop",
+        "python_testing",
+    ]
+    assert "You are a coding agent running in pi_agent." in result.content
+    for heading in (
+        "Communication style",
+        "Evidence-based debugging",
+        "Coding workflow",
+        "Python testing",
+    ):
+        assert f"## {heading}" in result.content
 
 
 def test_render_prompt_exposes_config_project_to_fragments(tmp_path: Path) -> None:

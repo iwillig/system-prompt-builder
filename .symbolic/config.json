@@ -1,4 +1,4 @@
 {
-  "paths": ["src", "tests"],
+  "paths": ["src", "tests", "scripts", "docs", "readme.md", "CHANGELOG.md", "pyproject.toml"],
   "database": ".symbolic/facts.dets"
 }

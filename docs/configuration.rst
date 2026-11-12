@@ -77,6 +77,28 @@ under ``build/`` are not moved; render again to write to
    List of named local or Git providers. It may be empty or omitted when prompts
    do not import skills.
 
+``renders``
+   Optional list of prompt and harness pairs used by ``spb render`` without
+   arguments. Prompt paths are relative to the project root. The harness must
+   be listed in ``support_harness``.
+
+   .. code-block:: yaml
+
+      renders:
+        - prompt: .spb/prompts/project-assistant.md
+          harness: pi_agent
+
+``links``
+   Optional list of ``source`` and ``destination`` paths, relative to the project
+   root. Run ``spb link`` after rendering to create these symbolic links. Sources
+   must be existing files; validation does not require them to exist yet.
+
+   .. code-block:: yaml
+
+      links:
+        - source: .spb/build/pi_agent/project-assistant.md
+          destination: .pi/SYSTEM.md
+
 Harness tool metadata
 ---------------------
 

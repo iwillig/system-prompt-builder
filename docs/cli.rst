@@ -80,6 +80,12 @@ fragment alias, source path, and digest.
 .. code-block:: console
 
    $ spb render PROMPT --harness HARNESS [OPTIONS]
+   $ spb render [OPTIONS]
+
+Without a prompt or harness, render each target in the configuration's
+``renders`` list. Options such as ``--var`` and ``--compress`` apply to every
+configured target. Targets are processed in order; a failure stops the batch,
+and earlier artifacts remain written.
 
 .. list-table:: Options
    :header-rows: 1
@@ -127,6 +133,11 @@ Parent directories are created when needed.
 .. code-block:: console
 
    $ spb link SOURCE DESTINATION [--replace]
+   $ spb link [--project-root DIRECTORY] [--replace]
+
+With no positional arguments, apply every link declared in ``.spb/config.yaml``.
+Both paths are relative to the project root. All sources and destinations are
+checked before creating links. Existing destinations require ``--replace``.
 
 .. list-table:: Options
    :header-rows: 1

@@ -1,5 +1,11 @@
 version: 1
 project_name: system_prompt_builder
+renders:
+- prompt: .spb/prompts/project-assistant.md
+  harness: pi_agent
+links:
+- source: .spb/build/pi_agent/project-assistant.compressed.md
+  destination: .pi/SYSTEM.md
 support_harness:
 - pi_agent
 tool_provider_metadata:

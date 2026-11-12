@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "e592bf586f21a812a71ff5a0478188aa0d92e6a5e4094c375b0105c19011576a"
+            "sha256": "72c0324348223d883a483c7771bd80182d5bc64e7805903da8b17f3919c3843c"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -1448,6 +1448,30 @@
             "index": "pypi",
             "markers": "python_version >= '3.8'",
             "version": "==2025.12.19"
+        },
+        "hegeltest": {
+            "hashes": [
+                "sha256:0be9cbeeaee5952d8aadf0564b57c715b95a580610ef429540acd31bbebd6980",
+                "sha256:1779d336bf88ffee8a2509b2b3953c16a7777a9a1da96adbf8fac0a611cb30ce",
+                "sha256:212205c4e79966017a1e2a5766eff88db383dd1857fbc1961aca8165f11bf196",
+                "sha256:45544f91c63d08cbea41102ae53dc0a94346d65801705cb87fc04329fefafe12",
+                "sha256:46d8cdee35030945d107c77103ce830ef63e99afcc3c9bb1d0f0c9e1aa46341b",
+                "sha256:5a22db4f64d271c40c460ab5f021d7e3b89fcb18a1e8139241e3c98c94f42cc5",
+                "sha256:72d7748b84231f5d346c01ad82ba28e719836966263df1a21493c1ddc0092465",
+                "sha256:92721b2641120ff1803910de40db0f7b0038684f61fc978f27201e1dffa9591c",
+                "sha256:971d865a57b80ba113b8a67b9826aec277c6768f549dbab0afb0175fce48d685",
+                "sha256:a737c90e780c26178dd2ac0c5973d069383f1c05ef024885550c7ca22acb3cf1",
+                "sha256:abb89b9d9b2b8b9a4dd28cf72b404e7694b0bf719fe3f07091c88127814a0b86",
+                "sha256:b1f0947e02cd8839c15f183ac06d55aa8c6214147fbb07da9cdd2cbe8d1253bf",
+                "sha256:b73cd67a9112e28e921b6d2d2b6e1d7a1bf9f65167943a669e729c5920cfc671",
+                "sha256:b998f92c9dacfe72d2fb8d4ac53e9aa10ef47c4a6b745eb72603ea8149c59649",
+                "sha256:e4ed4cdde5b434b1b0170a446531fe770fe475ddabe90d6628688dbc46ee41bc",
+                "sha256:f5ec6b0884024d2dbe3db5cc789181efb7acaf0fc326180b57f4109613ed0e0e",
+                "sha256:f7bc034925d20a734d3b74bddd25c4824df2438f8bf725b9d705a32545bc5434"
+            ],
+            "index": "pypi",
+            "markers": "python_version >= '3.11'",
+            "version": "==0.4.3"
         },
         "id": {
             "hashes": [

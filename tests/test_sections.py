@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import hegel
 import pytest
+from hegel import generators as gs
 
 from spb.sections import extract_sections, validate_layout
 
@@ -126,6 +128,14 @@ def test_strips_marker_newlines_and_keeps_author_blank_lines() -> None:
     sections = extract_sections(body, Path("prompt.md"))
 
     assert sections["rules"] == "\nFirst.\n\nLast.\n"
+
+
+@hegel.test
+def test_without_trailing_newline_preserves_arbitrary_text(tc: hegel.TestCase) -> None:
+    from spb.sections import without_trailing_newline
+
+    text = tc.draw(gs.text())
+    assert without_trailing_newline(text + "\n") == text
 
 
 def test_without_trailing_newline_removes_exactly_one() -> None:

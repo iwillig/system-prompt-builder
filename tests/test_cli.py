@@ -64,6 +64,43 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     assert [item["alias"] for item in manifest["fragments"]] == ["instructions"]
 
 
+def test_render_configured_targets(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    config_path = tmp_path / ".spb" / "config.yaml"
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    config["renders"] = [
+        {"prompt": ".spb/prompts/project-assistant.md", "harness": "pi_agent"}
+    ]
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    result = runner.invoke(cli, ["render", "--project-root", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / ".spb/build/pi_agent/project-assistant.md").is_file()
+    assert (
+        runner.invoke(cli, ["validate", "--project-root", str(tmp_path)]).exit_code == 0
+    )
+
+
+def test_render_requires_both_prompt_and_harness(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    result = CliRunner().invoke(cli, ["render", "--harness", "pi_agent"])
+    assert result.exit_code != 0
+    assert "both PROMPT and --harness" in result.output
+
+
+def test_render_without_configured_targets_fails(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    runner = CliRunner()
+    assert runner.invoke(cli, ["init", str(tmp_path)]).exit_code == 0
+    result = runner.invoke(cli, ["render", "--project-root", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "No renders configured" in result.output
+
+
 def test_init_command_supports_a_custom_harness(tmp_path: Path) -> None:
     from spb.cli import cli
 
@@ -625,6 +662,53 @@ skill_providers: []
     )
     assert manifest["compression"]["compressor"] == "none"
     assert len(manifest["compression"]["sha256"]) == 64
+
+
+def test_configured_links_are_applied_and_require_replace(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    spb = tmp_path / ".spb"
+    spb.mkdir()
+    source = spb / "build" / "prompt.md"
+    source.parent.mkdir()
+    source.write_text("prompt", encoding="utf-8")
+    (spb / "config.yaml").write_text(
+        "links:\n  - source: .spb/build/prompt.md\n    destination: .pi/SYSTEM.md\n",
+        encoding="utf-8",
+    )
+    args = ["link", "--project-root", str(tmp_path)]
+    runner = CliRunner()
+    result = runner.invoke(cli, args)
+    destination = tmp_path / ".pi" / "SYSTEM.md"
+    assert result.exit_code == 0, result.output
+    assert destination.is_symlink() and destination.resolve() == source.resolve()
+    assert runner.invoke(cli, args).exit_code != 0
+    assert runner.invoke(cli, [*args, "--replace"]).exit_code == 0
+
+
+def test_configured_links_preflight_before_writing(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    spb = tmp_path / ".spb"
+    spb.mkdir()
+    (tmp_path / "source.md").write_text("prompt", encoding="utf-8")
+    (spb / "config.yaml").write_text(
+        "links:\n  - source: source.md\n    destination: first.md\n"
+        "  - source: missing.md\n    destination: second.md\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(cli, ["link", "--project-root", str(tmp_path)])
+    assert result.exit_code != 0
+    assert "missing.md" in result.output
+    assert not (tmp_path / "first.md").exists()
+
+
+def test_link_requires_both_explicit_paths(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    result = CliRunner().invoke(cli, ["link", str(tmp_path / "source")])
+    assert result.exit_code != 0
+    assert "both SOURCE and DESTINATION" in result.output
 
 
 def test_link_creates_a_symlink_to_a_compiled_artifact(tmp_path: Path) -> None:

@@ -12,6 +12,8 @@ from typing import Any
 import chevron
 import yaml
 
+from spb.links import configured_links
+from spb.render_config import configured_renders
 from spb.sections import (
     extract_sections,
     validate_layout,
@@ -156,6 +158,8 @@ def validate_project(project_root: Path) -> list[Path]:
     """Validate every prompt in the project's prompts directory."""
     config = _load_yaml(project_root / ".spb" / "config.yaml")
     harnesses = _supported_harnesses(config)
+    configured_links(config, project_root)
+    configured_renders(config, project_root)
     _project_name(config)
     prompts_dir = project_root / ".spb" / "prompts"
     if not prompts_dir.is_dir():

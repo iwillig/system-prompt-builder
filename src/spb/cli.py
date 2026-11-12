@@ -22,6 +22,8 @@ from spb.evaluation import (
     write_evaluation_run,
 )
 from spb.initialization import initialize_project
+from spb.links import configured_links
+from spb.render_config import configured_renders
 from spb.rendering import (
     RenderedPrompt,
     ResolvedSkill,
@@ -85,8 +87,12 @@ def validate(project_root: Path) -> None:
 
 
 @cli.command()
-@click.argument("prompt", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option("--harness", required=True, help="Harness to render for.")
+@click.argument(
+    "prompt",
+    required=False,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+)
+@click.option("--harness", help="Harness to render for.")
 @click.option(
     "--var",
     "variable_pairs",
@@ -120,6 +126,45 @@ def validate(project_root: Path) -> None:
     help="Directory containing .spb/config.yaml.",
 )
 def render(
+    prompt: Path | None,
+    harness: str | None,
+    variable_pairs: tuple[str, ...],
+    replace_release: bool,
+    compress: bool,
+    compressor: str,
+    compress_rate: float,
+    project_root: Path,
+) -> None:
+    """Render PROMPT, or all configured render targets."""
+    if (prompt is None) != (harness is None):
+        raise click.UsageError("Provide both PROMPT and --harness, or neither")
+    try:
+        if prompt is not None and harness is not None:
+            targets = [(prompt, harness)]
+        else:
+            config_path = project_root / ".spb" / "config.yaml"
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            if not isinstance(config, dict):
+                raise ValueError(f"Expected a YAML mapping in {config_path}")
+            targets = configured_renders(config, project_root)
+            if not targets:
+                raise ValueError("No renders configured in .spb/config.yaml")
+        for target_prompt, target_harness in targets:
+            _render_one(
+                target_prompt,
+                target_harness,
+                variable_pairs,
+                replace_release,
+                compress,
+                compressor,
+                compress_rate,
+                project_root,
+            )
+    except (OSError, ValueError, yaml.YAMLError) as error:
+        raise click.ClickException(str(error)) from error
+
+
+def _render_one(
     prompt: Path,
     harness: str,
     variable_pairs: tuple[str, ...],
@@ -129,7 +174,6 @@ def render(
     compress_rate: float,
     project_root: Path,
 ) -> None:
-    """Render PROMPT into a harness-specific build artifact."""
     try:
         result = render_prompt(
             project_root,
@@ -482,23 +526,53 @@ def benchmark_compare(
 
 
 @cli.command()
-@click.argument("source", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.argument("destination", type=click.Path(path_type=Path))
+@click.argument("source", required=False, type=click.Path(path_type=Path))
+@click.argument("destination", required=False, type=click.Path(path_type=Path))
 @click.option("--replace", is_flag=True, help="Replace an existing destination.")
-def link(source: Path, destination: Path, replace: bool) -> None:
-    """Create a symlink from DESTINATION to compiled SOURCE."""
-    if destination.exists() or destination.is_symlink():
-        if not replace:
-            raise click.ClickException(
-                "Destination already exists; use --replace to replace it"
-            )
-        destination.unlink()
+@click.option(
+    "--project-root",
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+    default=Path("."),
+    show_default=True,
+    help="Directory containing .spb/config.yaml for configured links.",
+)
+def link(
+    source: Path | None, destination: Path | None, replace: bool, project_root: Path
+) -> None:
+    """Create a symlink, or apply configured links when no paths are given."""
+    if (source is None) != (destination is None):
+        raise click.UsageError("Provide both SOURCE and DESTINATION, or neither")
     try:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.symlink_to(source.resolve())
-    except OSError as error:
-        raise click.ClickException(f"Unable to create symlink: {error}") from error
-    click.echo(destination)
+        if source is not None and destination is not None:
+            links = [(source, destination)]
+        else:
+            config_path = project_root / ".spb" / "config.yaml"
+            config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            if not isinstance(config, dict):
+                raise ValueError(f"Expected a YAML mapping in {config_path}")
+            links = configured_links(config, project_root)
+        # Preflight the whole batch before changing any destinations.
+        for source, destination in links:
+            if not source.is_file():
+                raise ValueError(f"Link source must be an existing file: {source}")
+            if destination.exists() or destination.is_symlink():
+                if not replace:
+                    raise ValueError(
+                        f"Destination already exists: {destination}; "
+                        "use --replace to replace it"
+                    )
+                if destination.is_dir() and not destination.is_symlink():
+                    raise ValueError(f"Destination is a directory: {destination}")
+            if source.resolve() == destination.parent.resolve() / destination.name:
+                raise ValueError(f"Link source and destination are the same: {source}")
+        for source, destination in links:
+            if destination.exists() or destination.is_symlink():
+                destination.unlink()
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.symlink_to(source.resolve())
+            click.echo(destination)
+    except (OSError, ValueError, yaml.YAMLError) as error:
+        raise click.ClickException(str(error)) from error
 
 
 def _parse_score_limits(values: tuple[str, ...], option: str) -> dict[str, float]:

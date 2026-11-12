@@ -1,8 +1,8 @@
 Development
 ===========
 
-The development workflow uses Python 3.14, Pipenv, Just, pytest, Ruff, mypy,
-and Sphinx.
+The development workflow uses Python 3.14, Pipenv, Just, pytest, Hegel, Ruff,
+mypy, and Sphinx.
 
 Set up the environment
 ----------------------
@@ -33,7 +33,12 @@ The individual recipes are:
    $ just typecheck
    $ just test
 
-Use ``just format`` to apply Ruff formatting.
+Use ``just format`` to apply Ruff formatting. Pytest runs both example-based
+and Hegel property-based tests. Run a focused test with
+``pipenv run pytest tests/test_sections.py``. Hegel is installed as the
+``hegeltest`` development dependency and imported as ``hegel``. See the
+`Hegel documentation <https://hegel.readthedocs.io/en/latest/>`_ and the
+`pytest documentation <https://docs.pytest.org/en/stable/>`_.
 
 Run the CLI
 -----------
