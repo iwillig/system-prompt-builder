@@ -11,6 +11,13 @@ metrics:
       claims of tool use or test results that were not provided, incorrect
       commands, and advice that contradicts the expected output. Accept
       equivalent wording and do not require a particular format.
+    evaluation_steps:
+      - Check the response answers the user request and matches the key facts
+        and limitations in the expected output.
+      - Penalize fabricated observations, claims of tool use or test results
+        that were not provided, and incorrect commands.
+      - Penalize advice that contradicts the expected output.
+      - Accept equivalent wording; do not require a particular format.
     threshold: 0.7
 tests:
   - name: Explain an error in plain language
