@@ -48,6 +48,8 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     assert ".spb/fragments/project_instructions/FRAGMENT.md" in result.output
     assert ".spb/layouts/project-assistant.md" in result.output
     assert (project_root / ".spb" / "skills" / "local").is_dir()
+    assert (project_root / ".spb" / "evals").is_dir()
+    assert ".spb/evals/" in result.output
     assert not (project_root / "prompts").exists()
     assert not (project_root / "skills").exists()
     assert validation.exit_code == 0
@@ -62,6 +64,30 @@ def test_init_command_creates_a_valid_starter_project(tmp_path: Path) -> None:
     )
     manifest = yaml.safe_load(artifact.with_suffix(".manifest.yaml").read_text())
     assert [item["alias"] for item in manifest["fragments"]] == ["instructions"]
+
+
+def test_init_preserves_existing_eval_directory(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    evals = tmp_path / ".spb" / "evals"
+    evals.mkdir(parents=True)
+    suite = evals / "existing.yaml"
+    suite.write_text("existing", encoding="utf-8")
+    result = CliRunner().invoke(cli, ["init", str(tmp_path)])
+    assert result.exit_code == 0, result.output
+    assert suite.read_text(encoding="utf-8") == "existing"
+
+
+def test_init_rejects_file_at_eval_directory_before_writing(tmp_path: Path) -> None:
+    from spb.cli import cli
+
+    spb = tmp_path / ".spb"
+    spb.mkdir()
+    (spb / "evals").write_text("existing", encoding="utf-8")
+    result = CliRunner().invoke(cli, ["init", str(tmp_path)])
+    assert result.exit_code != 0
+    assert ".spb/evals" in result.output
+    assert not (spb / "config.yaml").exists()
 
 
 def test_render_configured_targets(tmp_path: Path) -> None:

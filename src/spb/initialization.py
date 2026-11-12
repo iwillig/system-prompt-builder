@@ -19,6 +19,7 @@ class InitializedProject:
     layout: Path
     fragment: Path
     skills: Path
+    evals: Path
 
 
 def initialize_project(project_root: Path, *, harness: str) -> InitializedProject:
@@ -33,6 +34,7 @@ def initialize_project(project_root: Path, *, harness: str) -> InitializedProjec
     layout_path = root / ".spb" / "layouts" / "project-assistant.md"
     fragment_path = root / ".spb" / "fragments" / "project_instructions" / "FRAGMENT.md"
     skills_path = root / ".spb" / "skills" / "local"
+    evals_path = root / ".spb" / "evals"
     managed_files = (config_path, prompt_path, layout_path, fragment_path)
     conflicts = [path for path in managed_files if path.exists() or path.is_symlink()]
     fragment_dir = fragment_path.parent
@@ -40,6 +42,8 @@ def initialize_project(project_root: Path, *, harness: str) -> InitializedProjec
         fragment_dir.exists() or fragment_dir.is_symlink()
     ) and fragment_path not in conflicts:
         conflicts.append(fragment_dir)
+    if (evals_path.exists() or evals_path.is_symlink()) and not evals_path.is_dir():
+        conflicts.append(evals_path)
     if conflicts:
         relative_conflicts = ", ".join(
             str(path.relative_to(root)) for path in conflicts
@@ -82,6 +86,7 @@ Run the checks that cover your changes.
     layout_path.parent.mkdir(parents=True, exist_ok=True)
     fragment_dir.mkdir(parents=True, exist_ok=True)
     skills_path.mkdir(parents=True, exist_ok=True)
+    evals_path.mkdir(parents=True, exist_ok=True)
     config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     prompt_path.write_text(prompt, encoding="utf-8")
     layout_path.write_text(layout, encoding="utf-8")
@@ -94,4 +99,5 @@ Run the checks that cover your changes.
         layout=layout_path,
         fragment=fragment_path,
         skills=skills_path,
+        evals=evals_path,
     )

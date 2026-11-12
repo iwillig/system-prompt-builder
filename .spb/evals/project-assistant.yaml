@@ -1,0 +1,95 @@
+# The same remote model generates and judges responses. Scores may be biased.
+model: hf-glm
+judge_model: hf-glm
+metrics:
+  - type: g_eval
+    name: Task-specific response quality
+    criteria: >-
+      Judge the response against the user request and its expected output.
+      Reward correct, relevant, clear guidance that includes the key facts and
+      limitations in the expected output. Penalize fabricated observations,
+      claims of tool use or test results that were not provided, incorrect
+      commands, and advice that contradicts the expected output. Accept
+      equivalent wording and do not require a particular format.
+    threshold: 0.7
+tests:
+  - name: Explain an error in plain language
+    group: communication
+    input: >-
+      Explain this error to a new Python developer in two short sentences:
+      FileNotFoundError: [Errno 2] No such file or directory: 'settings.yaml'.
+      Include the exact file name.
+    expected_output: >-
+      Explain in clear, short language that Python could not find the file
+      settings.yaml at the path it tried. Suggest checking the path or creating
+      the file. Preserve the exact file name and do not claim to have checked it.
+  - name: Preserve a command while simplifying instructions
+    group: communication
+    input: >-
+      Rewrite this as short, clear steps without changing the command:
+      Prior to initiating the test suite, ensure the environment is configured;
+      subsequently execute `pipenv run pytest tests/test_sections.py`.
+    expected_output: >-
+      Use clear steps to check that the environment is configured and run
+      `pipenv run pytest tests/test_sections.py` exactly. Do not claim either
+      action was performed.
+  - name: Diagnose with limited evidence
+    group: debugging
+    input: >-
+      A test fails with KeyError: 'name'. I have not provided the code or
+      traceback. What is the cause and what should I do next?
+    expected_output: >-
+      Explain that the cause cannot be determined from the error alone. A
+      missing dictionary key is a plausible hypothesis, not a confirmed cause.
+      Ask for the traceback and relevant code or test, and suggest reproducing
+      or inspecting the failure. Do not claim to have run a test or read code.
+  - name: Interpret an empty Symbolic query
+    group: symbolic
+    input: >-
+      Symbolic returned zero results for a query about callers of a Python
+      function. Does that prove the function is never called at runtime?
+    expected_output: >-
+      No. Zero results only mean that the query found no matching indexed facts;
+      scan scope, incomplete extraction, and dynamic Python behavior limit the
+      conclusion. Check scan completeness and scope, inspect source and tests,
+      and use runtime evidence where appropriate. Do not invent query results.
+  - name: Handle Symbolic failure
+    group: symbolic
+    input: >-
+      Symbolic parse failed with a timeout while I was looking for callers.
+      What can we conclude and what should we do next?
+    expected_output: >-
+      A timeout is not evidence that callers do not exist. Report the failure,
+      inspect relevant source and tests, use text search as a fallback, and
+      retry or investigate Symbolic when appropriate. Do not claim results.
+  - name: Plan a focused bug fix
+    group: workflow
+    input: >-
+      A Python function mishandles empty input. Describe a short plan to fix it;
+      you have not inspected the repository or run tests yet.
+    expected_output: >-
+      Read the relevant implementation and tests, reproduce or understand the
+      empty-input case, make a focused fix, and add a regression test. Run the
+      focused test and relevant broader checks when feasible. Do not claim any
+      file was read, change was made, or test passed.
+  - name: Choose Hegel and pytest
+    group: testing
+    input: >-
+      We need to test a Python serializer's round-trip behavior across many
+      valid values, and also retain a test for one known regression. What tools
+      and tests should we use in this project?
+    expected_output: >-
+      Use a Hegel property-based test under pytest to generate valid values and
+      assert the appropriate serialization round trip. Keep a separate pytest
+      example for the known regression. Account for mutable fixture state shared
+      between generated cases, if fixtures are used. Do not claim tests ran.
+  - name: Report verification honestly
+    group: workflow
+    input: >-
+      You changed a Python function, but the test command could not run because
+      pytest was not installed. Write a brief final update. Do not assume any
+      other checks were run.
+    expected_output: >-
+      State that the function was changed and that tests could not run because
+      pytest was not installed. Do not claim tests passed or imply the change was
+      verified. Mention the remaining verification needed.

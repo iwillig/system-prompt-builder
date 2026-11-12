@@ -19,6 +19,7 @@ Initialize the current repository:
      .spb/layouts/project-assistant.md
      .spb/fragments/project_instructions/FRAGMENT.md
      .spb/skills/local/
+     .spb/evals/
 
 Initialize another directory:
 
@@ -46,6 +47,11 @@ The command creates this layout:
          FRAGMENT.md
      skills/
        local/
+     evals/
+
+The ``evals/`` directory starts empty. Add evaluation suites there; SPB also
+accepts suite paths elsewhere. An existing evaluation directory and its contents
+are preserved.
 
 The configuration converts the directory name to snake_case for
 ``project_name``, declares the selected harness, and provides an empty tool
@@ -118,6 +124,7 @@ exists:
 * ``.spb/prompts/project-assistant.md``
 * ``.spb/layouts/project-assistant.md``
 * ``.spb/fragments/project_instructions/`` or its ``FRAGMENT.md``
+* ``.spb/evals`` when it exists and is not a directory
 
 The command reports every conflicting path. It does not provide a force option.
 This protects an existing prompt project from accidental replacement.

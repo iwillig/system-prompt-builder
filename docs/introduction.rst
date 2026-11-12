@@ -57,9 +57,10 @@ Initialize the current repository:
      .spb/layouts/project-assistant.md
      .spb/fragments/project_instructions/FRAGMENT.md
      .spb/skills/local/
+     .spb/evals/
 
 The starter project uses ``pi_agent``, contains a valid fragment-based prompt
-with no required variables, and includes a local skill directory. See :doc:`initialization` for
+with no required variables, and includes local skill and evaluation directories. See :doc:`initialization` for
 the generated contents, custom harness selection, and overwrite protection.
 
 Validate and render

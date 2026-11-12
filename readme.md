@@ -76,7 +76,8 @@ spb init
 The command creates `.spb/config.yaml`, a starter system prompt at
 `.spb/prompts/project-assistant.md`, its layout under `.spb/layouts/`,
 a reusable instruction fragment under `.spb/fragments/`, and
-`.spb/skills/local/`. It refuses to overwrite any managed starter path.
+`.spb/skills/local/`, and an empty `.spb/evals/` directory. It refuses to
+overwrite any managed starter path.
 
 Validate and render the prompt:
 

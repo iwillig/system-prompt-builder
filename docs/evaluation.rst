@@ -20,7 +20,9 @@ responsibility of the selected ``llm`` provider or plugin.
 Evaluation suite format
 -----------------------
 
-Create a YAML suite:
+Create a YAML suite under ``.spb/evals/``. ``spb init`` creates this empty
+directory; suite paths outside it are also supported.
+
 
 .. code-block:: yaml
 
@@ -105,21 +107,21 @@ Validate a suite without model calls:
 
 .. code-block:: console
 
-   $ spb eval validate evals/coder.yaml
+   $ spb eval validate .spb/evals/coder.yaml
 
 Validate prompt and suite wiring without a model call:
 
 .. code-block:: console
 
    $ spb eval run .spb/prompts/coder.md --harness pi_agent \
-       --suite evals/coder.yaml --dry-run
+       --suite .spb/evals/coder.yaml --dry-run
 
 Run the suite:
 
 .. code-block:: console
 
    $ spb eval run .spb/prompts/coder.md --harness pi_agent \
-       --suite evals/coder.yaml --fail-under 0.75
+       --suite .spb/evals/coder.yaml --fail-under 0.75
 
 The result records prompt and suite digests, model identity, visible variables,
 resolved skills, generated outputs, metric scores and reasons, and the overall
@@ -133,7 +135,7 @@ Compare the full prompt with a compressed variant:
 .. code-block:: console
 
    $ spb eval compare .spb/prompts/coder.md --harness pi_agent \
-       --suite evals/coder.yaml --compressor llmlingua \
+       --suite .spb/evals/coder.yaml --compressor llmlingua \
        --max-score-drop 0.05
 
 Use ``--compressor none`` to test the comparison workflow without loading a
@@ -152,7 +154,7 @@ Benchmark one prompt and require a minimum score for a named group:
 .. code-block:: console
 
    $ spb benchmark run .spb/prompts/coder-1.1.0.md --harness pi_agent \
-       --suite evals/coder.yaml --fail-under 0.75 \
+       --suite .spb/evals/coder.yaml --fail-under 0.75 \
        --min-group-score safety=0.9
 
 Compare two prompt source versions:
@@ -161,7 +163,7 @@ Compare two prompt source versions:
 
    $ spb benchmark compare \
        .spb/prompts/coder-1.0.0.md .spb/prompts/coder-1.1.0.md \
-       --harness pi_agent --suite evals/coder.yaml \
+       --harness pi_agent --suite .spb/evals/coder.yaml \
        --max-score-drop 0.02 \
        --max-group-score-drop safety=0.01
 

@@ -43,7 +43,8 @@ The command creates ``.spb/config.yaml``,
 ``.spb/prompts/project-assistant.md``,
 ``.spb/layouts/project-assistant.md``,
 ``.spb/fragments/project_instructions/FRAGMENT.md``, and
-``.spb/skills/local/``. See :doc:`initialization` for the generated
+``.spb/skills/local/``, and an empty ``.spb/evals/`` directory. See
+:doc:`initialization` for the generated
 contents and workflow.
 
 ``spb validate``

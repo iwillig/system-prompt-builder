@@ -64,8 +64,9 @@ def init(directory: Path, harness: str) -> None:
         project.layout,
         project.fragment,
         project.skills,
+        project.evals,
     ):
-        suffix = "/" if path == project.skills else ""
+        suffix = "/" if path in (project.skills, project.evals) else ""
         click.echo(f"  {path.relative_to(project.root)}{suffix}")
 
 

@@ -1,5 +1,22 @@
 from pathlib import Path
 
+import yaml
+
+
+def test_configured_prompts_have_valid_evaluation_suites() -> None:
+    from spb.evaluation import load_evaluation_suite
+    from spb.rendering import render_prompt
+
+    root = Path(__file__).resolve().parents[1]
+    config = yaml.safe_load((root / ".spb/config.yaml").read_text(encoding="utf-8"))
+    assert config["renders"]
+    for target in config["renders"]:
+        prompt = Path(target["prompt"])
+        suite = load_evaluation_suite(root / ".spb" / "evals" / f"{prompt.stem}.yaml")
+        rendered = render_prompt(root, root / prompt, harness=target["harness"])
+        assert rendered.content
+        assert suite.cases
+
 
 def test_load_evaluation_suite_reads_model_metrics_and_cases(tmp_path: Path) -> None:
     from spb.evaluation import load_evaluation_suite
