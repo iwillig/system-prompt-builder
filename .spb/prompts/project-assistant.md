@@ -1,6 +1,6 @@
 ---
 name: Project assistant
-version: 1.5.0
+version: 1.5.2
 compressible_fragments: [communication_style]
 layout: .spb/layouts/project-assistant.md
 fragments:
@@ -9,5 +9,6 @@ fragments:
   debugging: .spb/fragments/evidence_based_debugging
   agent_loop: .spb/fragments/agent_loop
   python_testing: .spb/fragments/python_testing
+  zen_of_python: .spb/fragments/zen_of_python
 skills: []
 ---

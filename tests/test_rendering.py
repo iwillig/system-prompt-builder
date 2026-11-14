@@ -444,6 +444,7 @@ def test_project_assistant_renders_selected_fragments() -> None:
         "debugging",
         "agent_loop",
         "python_testing",
+        "zen_of_python",
     ]
     assert "You are a coding agent running in pi_agent." in result.content
     for heading in (
@@ -451,6 +452,7 @@ def test_project_assistant_renders_selected_fragments() -> None:
         "Evidence-based debugging",
         "Coding workflow",
         "Python testing",
+        "The Zen of Python",
     ):
         assert f"## {heading}" in result.content
 

@@ -4,7 +4,7 @@ renders:
 - prompt: .spb/prompts/project-assistant.md
   harness: pi_agent
 links:
-- source: .spb/build/pi_agent/project-assistant.compressed.md
+- source: .spb/build/pi_agent/project-assistant.md
   destination: .pi/SYSTEM.md
 support_harness:
 - pi_agent
