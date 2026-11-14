@@ -8,5 +8,6 @@ build/
 dist/
 docs/_build/
 .spb/cache/
+.spb/.env
 .spb/build/
 .symbolic/facts.dets*
