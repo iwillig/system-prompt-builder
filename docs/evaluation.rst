@@ -295,6 +295,31 @@ contains ``baseline_runs``, per-variant ``outcomes`` with raw ``runs`` and
 ``NO_REGRESSION_DETECTED`` applies only to this suite. A preview does not
 validate the endpoint-backed path.
 
+Ablation checkpoints and provenance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A live ablation writes an incomplete checkpoint beside the requested report,
+using the report path plus ``.partial``. It saves each completed and validated
+repeat and each completed variant outcome. The CLI prints the checkpoint path
+when it first writes one. If evaluation fails or is interrupted, the checkpoint
+remains and the command fails; a prior final report is not replaced. A failed
+repeat is not saved, even if it completed some cases. Checkpoints do not support
+resume. On success, the final report has ``status: complete`` and the partial
+file is removed. A checkpoint has ``status: incomplete`` and only fully
+aggregated variants have outcomes. Both have a ``schema_version``.
+
+Suite case names and effective metric names (the explicit name, or the metric
+type when no name is given) must be unique. Names are case-sensitive. Duplicate
+names fail during suite loading, before compression or evaluation calls.
+
+Each rate outcome records ``compression`` with the compressor, settings,
+fragment alias and rate, and input and output fragment SHA-256 hashes. Drop
+outcomes have null compression provenance. LLMLingua settings include the model
+and device actually loaded by the process, including when the compressor is
+cached. These fields and the prompt hash aid auditing, but do not ensure the
+same output across dependency versions, model revisions, or hardware. The installed LLMLingua package version is recorded when available; the model
+revision is not currently captured.
+
 Benchmark prompt releases
 -------------------------
 

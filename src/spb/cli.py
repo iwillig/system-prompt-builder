@@ -25,6 +25,7 @@ from spb.evaluation import (
 from spb.fragment_eval import (
     evaluate_fragment_plan,
     plan_fragment_evaluation,
+    write_fragment_checkpoint,
     write_fragment_report,
 )
 from spb.initialization import initialize_project
@@ -475,6 +476,24 @@ def eval_ablate(
             )
         if dry_run:
             return
+        result_path = output or (
+            project_root
+            / "build"
+            / "evals"
+            / rendered.name
+            / rendered.version
+            / "fragment-ablation.yaml"
+        )
+        partial_path = Path(f"{result_path}.partial")
+        checkpoint_written = False
+
+        def checkpoint(data: dict[str, Any]) -> None:
+            nonlocal checkpoint_written
+            write_fragment_checkpoint(data, partial_path)
+            if not checkpoint_written:
+                click.echo(f"Partial report: {partial_path}")
+                checkpoint_written = True
+
         report = evaluate_fragment_plan(
             plan,
             loaded_suite,
@@ -482,17 +501,11 @@ def eval_ablate(
             harness=harness,
             noise_floor=noise_floor,
             on_progress=click.echo,
+            on_checkpoint=checkpoint,
         )
-        result_path = write_fragment_report(
-            report,
-            output
-            or project_root
-            / "build"
-            / "evals"
-            / rendered.name
-            / rendered.version
-            / "fragment-ablation.yaml",
-        )
+        write_fragment_report(report, result_path)
+        if checkpoint_written:
+            partial_path.unlink()
     except (OSError, ValueError) as error:
         raise click.ClickException(str(error)) from error
     if report.plan.repeats < 3:

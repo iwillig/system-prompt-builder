@@ -69,10 +69,11 @@ class EvaluationRun:
     results: tuple[dict[str, Any], ...]
     mean_score: float
     provenance: dict[str, Any]
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": self.timestamp,
             "prompt": {
                 "name": self.prompt_name,
                 "version": self.prompt_version,
@@ -135,6 +136,19 @@ def write_evaluation_run(run: EvaluationRun, output_path: Path) -> Path:
     return output_path
 
 
+def validate_suite_identities(suite: EvaluationSuite) -> None:
+    """Reject ambiguous case and effective metric names."""
+    for kind, names in (
+        ("case", [case.name for case in suite.cases]),
+        ("metric", [metric.name or metric.type for metric in suite.metrics]),
+    ):
+        seen: set[str] = set()
+        for name in names:
+            if name in seen:
+                raise ValueError(f"Duplicate {kind} identity: {name}")
+            seen.add(name)
+
+
 def load_evaluation_suite(path: Path) -> EvaluationSuite:
     """Load and validate an evaluation suite from YAML."""
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -151,12 +165,14 @@ def load_evaluation_suite(path: Path) -> EvaluationSuite:
     judge_model = data.get("judge_model")
     if not isinstance(judge_model, str) or not judge_model.strip():
         raise ValueError("Evaluation suites require judge_model")
-    return EvaluationSuite(
+    suite = EvaluationSuite(
         model=model,
         judge_model=judge_model,
         metrics=metrics,
         cases=cases,
     )
+    validate_suite_identities(suite)
+    return suite
 
 
 _JUDGE_MAX_ATTEMPTS = 3

@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import tempfile
 from collections.abc import Callable
+from contextlib import suppress
 from dataclasses import dataclass, replace
 from pathlib import Path
 from statistics import median
@@ -12,7 +15,12 @@ from typing import Any
 import yaml
 
 from spb.compression import compress_prompt
-from spb.evaluation import EvaluationRun, EvaluationSuite, run_evaluation
+from spb.evaluation import (
+    EvaluationRun,
+    EvaluationSuite,
+    run_evaluation,
+    validate_suite_identities,
+)
 from spb.rendering import RenderedPrompt, compose_fragment_content
 
 
@@ -23,6 +31,7 @@ class FragmentVariant:
     rate: float | None
     prompt: RenderedPrompt
     reduction: float
+    compression: dict[str, Any] | None = None
 
     @property
     def label(self) -> str:
@@ -58,6 +67,8 @@ class FragmentAblationReport:
 
     def as_dict(self) -> dict[str, Any]:
         return {
+            "schema_version": 1,
+            "status": "complete",
             "prompt": {
                 "name": self.plan.baseline.name,
                 "version": self.plan.baseline.version,
@@ -137,13 +148,24 @@ def plan_fragment_evaluation(
     variants = []
     for alias, kind, rate in specs:
         values = dict(prompt.rendered_fragments)
+        compression = None
         if kind == "drop":
             values[alias] = ""
         else:
             assert rate is not None
-            values[alias] = compress_prompt(
-                values[alias], compressor, rate=rate
-            ).content
+            original = values[alias]
+            compressed = compress_prompt(original, compressor, rate=rate)
+            values[alias] = compressed.content
+            compression = {
+                "alias": alias,
+                "rate": rate,
+                "compressor": compressed.compressor,
+                "settings": compressed.settings,
+                "input_sha256": hashlib.sha256(original.encode("utf-8")).hexdigest(),
+                "output_sha256": hashlib.sha256(
+                    compressed.content.encode("utf-8")
+                ).hexdigest(),
+            }
             if not values[alias].strip():
                 raise ValueError(f"Compressor returned empty fragment: {alias}")
         content = compose_fragment_content(prompt, values)
@@ -156,6 +178,7 @@ def plan_fragment_evaluation(
                 rate,
                 replace(prompt, content=content, rendered_fragments=values),
                 1 - len(content) / len(prompt.content),
+                compression,
             )
         )
     return FragmentPlan(prompt, tuple(variants), repeats, cases)
@@ -305,13 +328,56 @@ def evaluate_fragment_plan(
     harness: str,
     noise_floor: float = 0.1,
     on_progress: Callable[[str], None] | None = None,
+    on_checkpoint: Callable[[dict[str, Any]], None] | None = None,
 ) -> FragmentAblationReport:
+    validate_suite_identities(suite)
     if not 0 <= noise_floor <= 1:
         raise ValueError("Noise floor must be between 0 and 1")
     if plan.cases != len(suite.cases):
         raise ValueError("Plan case count does not match suite")
 
-    def runs(prompt: RenderedPrompt, label: str) -> tuple[EvaluationRun, ...]:
+    checkpoint: dict[str, Any] = {
+        "schema_version": 1,
+        "status": "incomplete",
+        "prompt": {
+            "name": plan.baseline.name,
+            "version": plan.baseline.version,
+            "baseline_sha256": hashlib.sha256(
+                plan.baseline.content.encode("utf-8")
+            ).hexdigest(),
+        },
+        "suite": {
+            "sha256": suite_sha256,
+            "model": suite.model,
+            "judge_model": suite.judge_model,
+        },
+        "harness": harness,
+        "repeats": plan.repeats,
+        "cases": plan.cases,
+        "noise_floor": noise_floor,
+        "planned_case_generations": plan.case_generations,
+        "baseline_runs": [],
+        "variants": [
+            {
+                "alias": v.alias,
+                "transformation": v.label,
+                "prompt_sha256": v.sha256,
+                "reduction_chars": v.reduction,
+                "compression": v.compression,
+                "runs": [],
+            }
+            for v in plan.variants
+        ],
+        "last_completed": None,
+    }
+
+    def save() -> None:
+        if on_checkpoint is not None:
+            on_checkpoint(checkpoint)
+
+    def runs(
+        prompt: RenderedPrompt, label: str, saved: list[dict[str, Any]]
+    ) -> tuple[EvaluationRun, ...]:
         expected_hash = hashlib.sha256(prompt.content.encode("utf-8")).hexdigest()
         results = []
         for repeat in range(1, plan.repeats + 1):
@@ -327,32 +393,32 @@ def evaluate_fragment_plan(
                 if on_progress is not None
                 else {}
             )
-            results.append(
-                run_evaluation(
-                    prompt,
-                    suite,
-                    suite_sha256=suite_sha256,
-                    harness=harness,
-                    **run_kwargs,
-                )
+            run = run_evaluation(
+                prompt, suite, suite_sha256=suite_sha256, harness=harness, **run_kwargs
             )
+            if (
+                run.prompt_sha256 != expected_hash
+                or run.suite_sha256 != suite_sha256
+                or run.model != suite.model
+            ):
+                raise ValueError(
+                    "Evaluation results do not match the planned prompt or suite"
+                )
+            results.append(run)
+            saved.append(run.as_dict())
+            checkpoint["last_completed"] = {"phase": label, "repeat": repeat}
+            save()
             if on_progress is not None:
                 on_progress(f"{prefix}: complete")
-        if any(
-            run.prompt_sha256 != expected_hash
-            or run.suite_sha256 != suite_sha256
-            or run.model != suite.model
-            for run in results
-        ):
-            raise ValueError(
-                "Evaluation results do not match the planned prompt or suite"
-            )
         return tuple(results)
 
-    baseline = runs(plan.baseline, "baseline")
+    baseline = runs(plan.baseline, "baseline", checkpoint["baseline_runs"])
     outcomes = []
-    for variant in plan.variants:
-        current = runs(variant.prompt, f"{variant.alias} {variant.label}")
+    for index, variant in enumerate(plan.variants):
+        entry = checkpoint["variants"][index]
+        current = runs(
+            variant.prompt, f"{variant.alias} {variant.label}", entry["runs"]
+        )
         outcome = aggregate_variant(baseline, current, noise_floor=noise_floor)
         outcome.update(
             {
@@ -360,10 +426,14 @@ def evaluate_fragment_plan(
                 "transformation": variant.label,
                 "prompt_sha256": variant.sha256,
                 "reduction_chars": variant.reduction,
-                "runs": [run.as_dict() for run in current],
+                "compression": variant.compression,
+                "runs": entry["runs"],
             }
         )
         outcomes.append(outcome)
+        entry["outcome"] = outcome
+        checkpoint["last_completed"] = {"phase": "aggregated", "variant": index}
+        save()
     return FragmentAblationReport(
         plan,
         suite_sha256,
@@ -377,6 +447,25 @@ def evaluate_fragment_plan(
 
 
 def write_fragment_report(report: FragmentAblationReport, path: Path) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(yaml.safe_dump(report.as_dict(), sort_keys=False), encoding="utf-8")
+    write_fragment_checkpoint(report.as_dict(), path)
     return path
+
+
+def write_fragment_checkpoint(data: dict[str, Any], path: Path) -> None:
+    """Atomically replace an artifact, preserving the previous file on failure."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent, delete=False
+        ) as file:
+            temporary = file.name
+            yaml.safe_dump(data, file, sort_keys=False)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temporary, path)
+        temporary = None
+    finally:
+        if temporary is not None:
+            with suppress(OSError):
+                os.unlink(temporary)

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from functools import lru_cache
+from importlib import metadata
 from typing import Any
 
 from spb.rendering import RenderedPrompt, compose_fragment_content
@@ -72,7 +73,7 @@ def compress_rendered_prompt(
 
 def _compress_with_llmlingua(content: str, rate: float) -> CompressionResult:
     try:
-        compressor = _llmlingua_compressor()
+        compressor, model, device, version = _llmlingua_compressor()
     except ImportError as error:
         raise ValueError(
             "LLMLingua is not installed; install the llmlingua optional dependency"
@@ -87,7 +88,13 @@ def _compress_with_llmlingua(content: str, rate: float) -> CompressionResult:
     return CompressionResult(
         content=compressed,
         compressor="llmlingua",
-        settings={"rate": rate},
+        settings={
+            "rate": rate,
+            "model": model,
+            "device": device,
+            "use_llmlingua2": True,
+            "package_version": version,
+        },
     )
 
 
@@ -103,11 +110,18 @@ def _llmlingua_compressor() -> Any:
 
     from llmlingua import PromptCompressor  # type: ignore[import-untyped]
 
-    return PromptCompressor(
-        model_name=os.environ.get(
-            "SPB_LLMLINGUA_MODEL",
-            "microsoft/llmlingua-2-bert-base-multilingual-cased-meetingbank",
-        ),
-        use_llmlingua2=True,
-        device_map=os.environ.get("SPB_LLMLINGUA_DEVICE", "cpu"),
+    model = os.environ.get(
+        "SPB_LLMLINGUA_MODEL",
+        "microsoft/llmlingua-2-bert-base-multilingual-cased-meetingbank",
+    )
+    device = os.environ.get("SPB_LLMLINGUA_DEVICE", "cpu")
+    try:
+        version = metadata.version("llmlingua")
+    except metadata.PackageNotFoundError:
+        version = None
+    return (
+        PromptCompressor(model_name=model, use_llmlingua2=True, device_map=device),
+        model,
+        device,
+        version,
     )

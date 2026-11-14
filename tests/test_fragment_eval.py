@@ -303,6 +303,8 @@ def test_cli_writes_live_report_with_stubbed_evaluation(
     artifact = yaml.safe_load(output.read_text())
     assert artifact["planned_case_generations"] == 102
     assert artifact["outcomes"][0]["transformation"] == "drop"
+    assert artifact["status"] == "complete"
+    assert not Path(str(output) + ".partial").exists()
 
 
 def test_cli_explains_exploratory_verdict_and_disagreeing_pass_flags(
@@ -387,3 +389,323 @@ def test_cli_shows_last_phase_when_judging_fails(monkeypatch, tmp_path: Path) ->
     )
     assert "invalid JSON" in result.output
     assert not output.exists()
+
+
+def test_duplicate_suite_rejected_before_ablation_calls(monkeypatch, tmp_path):
+    from spb.cli import cli
+
+    suite = tmp_path / "suite.yaml"
+    suite.write_text(
+        "model: m\njudge_model: j\nmetrics:\n  - type: answer_relevancy\n"
+        "tests:\n  - name: same\n    input: a\n  - name: same\n    input: b\n"
+    )
+    monkeypatch.setattr(
+        "spb.fragment_eval.compress_prompt", lambda *a, **k: pytest.fail("compressed")
+    )
+    for extra in ([], ["--dry-run"]):
+        result = CliRunner().invoke(
+            cli,
+            [
+                "eval",
+                "ablate",
+                ".spb/prompts/python-assistant.md",
+                "--suite",
+                str(suite),
+                "--harness",
+                "pi_agent",
+            ]
+            + extra,
+        )
+        assert result.exit_code != 0
+        assert "Duplicate case" in result.output
+
+
+def test_checkpoint_survives_failure_and_retains_completed_runs(monkeypatch, tmp_path):
+    from spb.cli import cli
+
+    calls = []
+
+    def fake(prompt, suite, *, suite_sha256, harness, on_progress):
+        calls.append(1)
+        if len(calls) == 5:
+            raise ValueError("endpoint failed")
+        return replace(
+            _run(),
+            prompt_sha256=hashlib.sha256(prompt.content.encode()).hexdigest(),
+            suite_sha256=suite_sha256,
+            model=suite.model,
+        )
+
+    monkeypatch.setattr("spb.fragment_eval.run_evaluation", fake)
+    output = tmp_path / "out.yaml"
+    output.write_text("old final")
+    result = CliRunner().invoke(
+        cli,
+        [
+            "eval",
+            "ablate",
+            ".spb/prompts/python-assistant.md",
+            "--suite",
+            ".spb/evals/python-assistant-hf.yaml",
+            "--harness",
+            "pi_agent",
+            "--mode",
+            "drop",
+            "--fragments",
+            "routing",
+            "--output",
+            str(output),
+        ],
+    )
+    assert result.exit_code != 0
+    assert output.read_text() == "old final"
+    partial = yaml.safe_load(Path(str(output) + ".partial").read_text())
+    assert partial["status"] == "incomplete"
+    assert len(partial["baseline_runs"]) == 3
+    assert len(partial["variants"][0]["runs"]) == 1
+    assert "outcome" not in partial["variants"][0]
+
+
+def test_rate_variant_records_compression_provenance():
+    prompt = render_prompt(
+        Path("."), Path(".spb/prompts/python-assistant.md"), harness="pi_agent"
+    )
+    plan = plan_fragment_evaluation(
+        prompt,
+        cases=1,
+        mode="both",
+        aliases=("routing",),
+        rates=(0.5,),
+        compressor="none",
+    )
+    assert plan.variants[0].compression is None
+    provenance = plan.variants[1].compression
+    assert provenance["compressor"] == "none"
+    assert provenance["settings"] == {"rate": 0.5}
+    assert provenance["input_sha256"] == provenance["output_sha256"]
+
+
+@pytest.mark.parametrize("interruption", [ValueError("failed"), KeyboardInterrupt()])
+def test_checkpoint_baseline_failure(monkeypatch, tmp_path, interruption):
+    from spb.cli import cli
+
+    calls = []
+
+    def fake(prompt, suite, *, suite_sha256, harness, on_progress):
+        calls.append(1)
+        if len(calls) == 2:
+            raise interruption
+        return replace(
+            _run(),
+            prompt_sha256=hashlib.sha256(prompt.content.encode()).hexdigest(),
+            suite_sha256=suite_sha256,
+            model=suite.model,
+        )
+
+    monkeypatch.setattr("spb.fragment_eval.run_evaluation", fake)
+    output = tmp_path / "out.yaml"
+    result = CliRunner().invoke(
+        cli,
+        [
+            "eval",
+            "ablate",
+            ".spb/prompts/python-assistant.md",
+            "--suite",
+            ".spb/evals/python-assistant-hf.yaml",
+            "--harness",
+            "pi_agent",
+            "--mode",
+            "drop",
+            "--fragments",
+            "routing",
+            "--output",
+            str(output),
+        ],
+    )
+    assert result.exit_code != 0
+    partial = yaml.safe_load(Path(str(output) + ".partial").read_text())
+    assert len(partial["baseline_runs"]) == 1
+    assert not partial["variants"][0]["runs"]
+    assert "Partial report:" in result.output
+
+
+def test_atomic_checkpoint_preserves_old_file_on_replace_error(monkeypatch, tmp_path):
+    from spb.fragment_eval import write_fragment_checkpoint
+
+    path = tmp_path / "report"
+    path.write_text("old")
+
+    def fail(*args):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr("spb.fragment_eval.os.replace", fail)
+    with pytest.raises(OSError, match="replace failed"):
+        write_fragment_checkpoint({"test": 1}, path)
+    assert path.read_text() == "old"
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_checkpoint_failure_stops_evaluation(monkeypatch):
+    prompt = render_prompt(
+        Path("."), Path(".spb/prompts/python-assistant.md"), harness="pi_agent"
+    )
+    suite = load_evaluation_suite(Path(".spb/evals/python-assistant-hf.yaml"))
+    plan = plan_fragment_evaluation(
+        prompt, cases=len(suite.cases), mode="drop", aliases=("routing",)
+    )
+    calls = []
+
+    def fake(prompt, suite, *, suite_sha256, harness):
+        calls.append(1)
+        return replace(
+            _run(),
+            prompt_sha256=hashlib.sha256(prompt.content.encode()).hexdigest(),
+            suite_sha256=suite_sha256,
+            model=suite.model,
+        )
+
+    monkeypatch.setattr("spb.fragment_eval.run_evaluation", fake)
+
+    def fail(data):
+        raise OSError("checkpoint failed")
+
+    with pytest.raises(OSError, match="checkpoint failed"):
+        evaluate_fragment_plan(
+            plan, suite, suite_sha256="suite", harness="pi_agent", on_checkpoint=fail
+        )
+    assert len(calls) == 1
+
+
+def test_complete_report_atomic_failure_keeps_checkpoint(monkeypatch, tmp_path):
+    from spb.cli import cli
+
+    def fake(prompt, suite, *, suite_sha256, harness, on_progress):
+        return replace(
+            _run(),
+            prompt_sha256=hashlib.sha256(prompt.content.encode()).hexdigest(),
+            suite_sha256=suite_sha256,
+            model=suite.model,
+        )
+
+    monkeypatch.setattr("spb.fragment_eval.run_evaluation", fake)
+
+    def fail(*args):
+        raise OSError("final failed")
+
+    monkeypatch.setattr("spb.cli.write_fragment_report", fail)
+    output = tmp_path / "out.yaml"
+    output.write_text("old")
+    result = CliRunner().invoke(
+        cli,
+        [
+            "eval",
+            "ablate",
+            ".spb/prompts/python-assistant.md",
+            "--suite",
+            ".spb/evals/python-assistant-hf.yaml",
+            "--harness",
+            "pi_agent",
+            "--mode",
+            "drop",
+            "--fragments",
+            "routing",
+            "--repeats",
+            "1",
+            "--output",
+            str(output),
+        ],
+    )
+    assert result.exit_code != 0
+    assert output.read_text() == "old"
+    partial = yaml.safe_load(Path(str(output) + ".partial").read_text())
+    assert partial["variants"][0]["outcome"]["verdict"] == "INDETERMINATE"
+
+
+def test_checkpoint_timestamps_and_compression_are_stable(monkeypatch):
+    prompt = render_prompt(
+        Path("."), Path(".spb/prompts/python-assistant.md"), harness="pi_agent"
+    )
+    suite = load_evaluation_suite(Path(".spb/evals/python-assistant-hf.yaml"))
+    plan = plan_fragment_evaluation(
+        prompt,
+        cases=len(suite.cases),
+        mode="rate",
+        aliases=("routing",),
+        rates=(0.5,),
+        compressor="none",
+        repeats=1,
+    )
+    monkeypatch.setattr(
+        "spb.fragment_eval.run_evaluation",
+        lambda prompt, suite, *, suite_sha256, harness: replace(
+            _run(),
+            prompt_sha256=hashlib.sha256(prompt.content.encode()).hexdigest(),
+            suite_sha256=suite_sha256,
+            model=suite.model,
+        ),
+    )
+    snapshots = []
+    report = evaluate_fragment_plan(
+        plan,
+        suite,
+        suite_sha256="suite",
+        harness="pi_agent",
+        on_checkpoint=lambda data: snapshots.append(
+            yaml.safe_load(yaml.safe_dump(data))
+        ),
+    )
+    assert all(
+        s["baseline_runs"][0]["timestamp"]
+        == snapshots[0]["baseline_runs"][0]["timestamp"]
+        for s in snapshots
+    )
+    assert (
+        snapshots[-1]["variants"][0]["compression"]
+        == report.outcomes[0]["compression"]
+        == plan.variants[0].compression
+    )
+    assert (
+        report.as_dict()["baseline_runs"][0]["timestamp"]
+        == snapshots[0]["baseline_runs"][0]["timestamp"]
+    )
+
+
+def test_direct_ablation_rejects_duplicate_suite_before_runner(monkeypatch):
+    prompt = render_prompt(
+        Path("."), Path(".spb/prompts/python-assistant.md"), harness="pi_agent"
+    )
+    suite = load_evaluation_suite(Path(".spb/evals/python-assistant-hf.yaml"))
+    suite = replace(suite, cases=(suite.cases[0], suite.cases[0]))
+    plan = plan_fragment_evaluation(prompt, cases=2, mode="drop", aliases=("routing",))
+    monkeypatch.setattr(
+        "spb.fragment_eval.run_evaluation", lambda *a, **k: pytest.fail("model called")
+    )
+    with pytest.raises(ValueError, match="Duplicate case"):
+        evaluate_fragment_plan(plan, suite, suite_sha256="suite", harness="pi_agent")
+
+
+def test_rate_provenance_records_compressor_result_and_fragment_hashes(monkeypatch):
+    from spb.compression import CompressionResult
+
+    prompt = render_prompt(
+        Path("."), Path(".spb/prompts/python-assistant.md"), harness="pi_agent"
+    )
+    monkeypatch.setattr(
+        "spb.fragment_eval.compress_prompt",
+        lambda content, compressor, *, rate: CompressionResult(
+            "short", compressor, {"model": "stub", "rate": rate}
+        ),
+    )
+    plan = plan_fragment_evaluation(
+        prompt, cases=1, mode="rate", aliases=("routing",), rates=(0.3,)
+    )
+    assert plan.variants[0].compression == {
+        "alias": "routing",
+        "rate": 0.3,
+        "compressor": "llmlingua",
+        "settings": {"model": "stub", "rate": 0.3},
+        "input_sha256": hashlib.sha256(
+            prompt.rendered_fragments["routing"].encode()
+        ).hexdigest(),
+        "output_sha256": hashlib.sha256(b"short").hexdigest(),
+    }

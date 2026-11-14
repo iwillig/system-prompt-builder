@@ -155,3 +155,42 @@ def test_compression_rate_is_validated_and_recorded(
     result = compression.compress_rendered_prompt(rendered, "none", rate=0.75)
     assert result.settings["fragments"][0]["settings"] == {"rate": 0.75}
     assert result.content == rendered.content
+
+
+def test_llmlingua_provenance_tracks_cached_configuration(monkeypatch):
+    import sys
+    import types
+
+    import spb.compression as compression
+
+    class FakeCompressor:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+
+        def compress_prompt(self, *args, **kwargs):
+            return {"compressed_prompt": "short"}
+
+    monkeypatch.setattr("spb.compression.metadata.version", lambda name: "1.2.3")
+    monkeypatch.setitem(
+        sys.modules, "llmlingua", types.SimpleNamespace(PromptCompressor=FakeCompressor)
+    )
+    compression._llmlingua_compressor.cache_clear()
+    try:
+        monkeypatch.setenv("SPB_LLMLINGUA_MODEL", "first")
+        monkeypatch.setenv("SPB_LLMLINGUA_DEVICE", "cpu")
+        first = compression.compress_prompt("long", "llmlingua")
+        monkeypatch.setenv("SPB_LLMLINGUA_MODEL", "second")
+        second = compression.compress_prompt("long", "llmlingua")
+        assert (
+            first.settings
+            == second.settings
+            == {
+                "rate": 0.5,
+                "model": "first",
+                "device": "cpu",
+                "use_llmlingua2": True,
+                "package_version": "1.2.3",
+            }
+        )
+    finally:
+        compression._llmlingua_compressor.cache_clear()

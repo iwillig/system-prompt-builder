@@ -382,3 +382,42 @@ def test_measure_fails_fast_on_non_json_error() -> None:
         _measure_metric_with_retry(metric, object())
 
     assert metric.attempts == 1
+
+
+def test_suite_identity_validation_rejects_duplicate_effective_metric_names():
+    from spb.evaluation import EvaluationSuite, MetricSpec, validate_suite_identities
+
+    for metrics in (
+        (
+            MetricSpec("g_eval", 0.5, name="same"),
+            MetricSpec("g_eval", 0.5, name="same"),
+        ),
+        (
+            MetricSpec("answer_relevancy", 0.5),
+            MetricSpec("g_eval", 0.5, name="answer_relevancy"),
+        ),
+    ):
+        with pytest.raises(ValueError, match="Duplicate metric"):
+            validate_suite_identities(EvaluationSuite("m", "j", metrics, ()))
+
+
+@pytest.mark.parametrize(
+    "metrics",
+    [
+        "  - type: answer_relevancy\n    name: same\n"
+        "  - type: answer_relevancy\n    name: same\n",
+        "  - type: answer_relevancy\n"
+        "  - type: answer_relevancy\n    name: answer_relevancy\n",
+    ],
+)
+def test_load_suite_rejects_duplicate_metric_names(tmp_path, metrics):
+    from spb.evaluation import load_evaluation_suite
+
+    path = tmp_path / "suite.yaml"
+    path.write_text(
+        "model: m\njudge_model: j\nmetrics:\n"
+        + metrics
+        + "tests:\n  - name: test\n    input: hello\n"
+    )
+    with pytest.raises(ValueError, match="Duplicate metric"):
+        load_evaluation_suite(path)
