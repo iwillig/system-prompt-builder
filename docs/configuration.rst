@@ -5,6 +5,25 @@ Every prompt project uses ``.spb/config.yaml`` to declare supported harnesses,
 tool metadata, and skill providers. Paths in the configuration are resolved
 from the project root passed through ``--project-root``.
 
+Environment file
+----------------
+
+SPB loads ``.spb/.env`` from the selected project root before running a CLI
+command. Commands without ``--project-root`` use the current directory. Existing
+process environment variables take precedence. Variable interpolation is
+not supported. The file is optional and contains plaintext; protect it from
+other users and do not commit it. New projects get a ``.spb/.gitignore`` that
+ignores ``.env`` and ``.env.*`` except ``.env.example``. For existing projects,
+check your Git ignore rules before creating the file.
+
+For evaluation models, an ``llm`` key alias can use an environment variable
+named ``SPB_LLM_KEY_`` followed by the uppercase alias with non-alphanumeric
+characters replaced by underscores. For example, ``huggingface-endpoint`` uses
+``SPB_LLM_KEY_HUGGINGFACE_ENDPOINT``. Aliases that normalize to the same name
+share a variable. This key takes precedence over the key stored by ``llm``.
+Keys must not be empty or contain leading or trailing whitespace. Provider
+errors and tracebacks may contain secrets; review output before sharing it.
+
 Complete example
 ----------------
 

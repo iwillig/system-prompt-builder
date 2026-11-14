@@ -87,6 +87,9 @@ Run the checks that cover your changes.
     fragment_dir.mkdir(parents=True, exist_ok=True)
     skills_path.mkdir(parents=True, exist_ok=True)
     evals_path.mkdir(parents=True, exist_ok=True)
+    ignore_path = root / ".spb" / ".gitignore"
+    if not ignore_path.exists() and not ignore_path.is_symlink():
+        ignore_path.write_text(".env\n.env.*\n!.env.example\n", encoding="utf-8")
     config_path.write_text(yaml.safe_dump(config, sort_keys=False), encoding="utf-8")
     prompt_path.write_text(prompt, encoding="utf-8")
     layout_path.write_text(layout, encoding="utf-8")

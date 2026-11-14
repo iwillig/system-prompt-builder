@@ -20,6 +20,7 @@ dependencies = [
   "chevron>=0.14.0",
   "click>=8.1.8",
   "PyYAML>=6.0.2",
+  "python-dotenv>=1.0",
   "sloppy-xml>=0.3.1",
 ]
 

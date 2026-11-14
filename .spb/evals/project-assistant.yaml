@@ -8,16 +8,23 @@ metrics:
       Judge the response against the user request and its expected output.
       Reward correct, relevant, clear guidance that includes the key facts and
       limitations in the expected output. Penalize fabricated observations,
-      claims of tool use or test results that were not provided, incorrect
-      commands, and advice that contradicts the expected output. Accept
-      equivalent wording and do not require a particular format.
+      claims of tool use or test results that were not provided, unsupported
+      certainty, incorrect commands or code, and advice that contradicts the
+      expected output. Check concrete API use even when code is called a sketch.
+      Penalize missing or excessive content when the user requests brevity or a
+      specific length. Accept equivalent wording.
     evaluation_steps:
       - Check the response answers the user request and matches the key facts
         and limitations in the expected output.
       - Penalize fabricated observations, claims of tool use or test results
         that were not provided, and incorrect commands.
-      - Penalize advice that contradicts the expected output.
-      - Accept equivalent wording; do not require a particular format.
+      - Check code and API use against the expected output; penalize incorrect
+        imports, arguments, and calls, even in examples labeled as sketches.
+      - Penalize unsupported certainty and advice that contradicts the expected
+        output; distinguish a bounded observation from a proven conclusion.
+      - Check explicit length and format requirements and penalize avoidable
+        detail when the user asks for a short answer.
+      - Accept equivalent wording when it meets the requested constraints.
     threshold: 0.7
 tests:
   - name: Explain an error in plain language
@@ -59,7 +66,8 @@ tests:
       No. Zero results only mean that the query found no matching indexed facts;
       scan scope, incomplete extraction, and dynamic Python behavior limit the
       conclusion. Check scan completeness and scope, inspect source and tests,
-      and use runtime evidence where appropriate. Do not invent query results.
+      and use runtime evidence where appropriate. Do not invent query results or
+      claim that direct calls are always or reliably discovered.
   - name: Handle Symbolic failure
     group: symbolic
     input: >-
@@ -90,6 +98,28 @@ tests:
       assert the appropriate serialization round trip. Keep a separate pytest
       example for the known regression. Account for mutable fixture state shared
       between generated cases, if fixtures are used. Do not claim tests ran.
+  - name: Write an executable Hegel test
+    group: testing
+    input: >-
+      Write a complete, runnable Hegel test under pytest for the invariant that
+      UTF-8 encoding and decoding a generated string returns the original.
+      Include all imports. Do not claim to have run it.
+    expected_output: >-
+      Import hegel and hegel.generators, decorate the test with @hegel.test,
+      accept a test case argument such as tc: hegel.TestCase, and call
+      tc.draw with a text generator such as gs.text(). Assert that encoding
+      and decoding the drawn string with UTF-8 returns the original. Do not
+      import testcil, call draw on hegel.generators, omit the test case
+      argument, or claim the test ran.
+  - name: Avoid unsupported certainty about static analysis
+    group: symbolic
+    input: >-
+      In at most two sentences, can a static caller search that returned no
+      matches prove a Python function is unused? Explain the key limitation.
+    expected_output: >-
+      No. In at most two sentences, explain that the result is limited by
+      scan scope and analysis, and can miss dynamic calls. Do not assert that
+      direct calls are always or reliably found, or claim any check was run.
   - name: Report verification honestly
     group: workflow
     input: >-

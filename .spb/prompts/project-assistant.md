@@ -1,6 +1,6 @@
 ---
 name: Project assistant
-version: 1.5.2
+version: 1.5.3
 compressible_fragments: [communication_style]
 layout: .spb/layouts/project-assistant.md
 fragments:

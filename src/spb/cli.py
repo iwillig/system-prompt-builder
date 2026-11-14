@@ -11,6 +11,7 @@ from typing import Any
 
 import click
 import yaml
+from dotenv import load_dotenv
 
 from spb.compression import CompressionResult, compress_rendered_prompt
 from spb.evaluation import (
@@ -39,7 +40,21 @@ from spb.rendering import (
 )
 
 
-@click.group()
+class ProjectCommand(click.Command):
+    """Load the selected project's environment before running a command."""
+
+    def invoke(self, ctx: click.Context) -> Any:
+        project_root = Path(ctx.params.get("project_root", Path.cwd()))
+        load_dotenv(project_root / ".spb" / ".env", override=False, interpolate=False)
+        return super().invoke(ctx)
+
+
+class ProjectGroup(click.Group):
+    command_class = ProjectCommand
+    group_class = type
+
+
+@click.group(cls=ProjectGroup)
 def cli() -> None:
     """Compose reproducible system prompts."""
 

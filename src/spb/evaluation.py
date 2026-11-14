@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import hashlib
+import os
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -241,7 +243,7 @@ def run_evaluation(
 
     if not suite.judge_model:
         raise ValueError("Evaluation suites require judge_model")
-    model = llm.get_model(suite.model)
+    model = _evaluation_model(llm, suite.model)
     judge = _llm_judge(llm, DeepEvalBaseLLM, suite.judge_model)
     results: list[dict[str, Any]] = []
     scores: list[float] = []
@@ -451,6 +453,22 @@ def _visible_variables(variables: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _evaluation_model(llm_module: Any, model_id: str) -> Any:
+    """Apply an explicitly configured environment key for this model's alias."""
+    model = llm_module.get_model(model_id)
+    alias = getattr(model, "needs_key", None)
+    if isinstance(alias, str):
+        variable = "SPB_LLM_KEY_" + re.sub(r"[^A-Za-z0-9]", "_", alias).upper()
+        key = os.environ.get(variable)
+        if key is not None:
+            if not key or key != key.strip():
+                raise ValueError(
+                    f"{variable} must not be empty or have outer whitespace"
+                )
+            model.key = key
+    return model
+
+
 def _llm_judge(llm_module: Any, base_class: Any, model_id: str | None) -> Any:
     if model_id is None:
         return None
@@ -459,7 +477,7 @@ def _llm_judge(llm_module: Any, base_class: Any, model_id: str | None) -> Any:
 
     class LlmJudge(base_class):  # type: ignore[misc]
         def load_model(self) -> Any:
-            return llm_module.get_model(model_id)
+            return _evaluation_model(llm_module, judge_model)
 
         def generate(self, prompt: str) -> str:
             return str(self.load_model().prompt(prompt).text())

@@ -421,3 +421,43 @@ def test_load_suite_rejects_duplicate_metric_names(tmp_path, metrics):
     )
     with pytest.raises(ValueError, match="Duplicate metric"):
         load_evaluation_suite(path)
+
+
+def test_evaluation_model_uses_alias_environment_key(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from spb.evaluation import _evaluation_model
+
+    model = SimpleNamespace(needs_key="huggingface-endpoint", key=None)
+    llm = SimpleNamespace(get_model=lambda name: model)
+    monkeypatch.setenv("SPB_LLM_KEY_HUGGINGFACE_ENDPOINT", "test-key")
+    assert _evaluation_model(llm, "hf-glm").key == "test-key"
+
+
+@pytest.mark.parametrize("key", ["", " secret", "secret ", "secret\n"])
+def test_evaluation_model_rejects_invalid_key_without_exposing_it(
+    monkeypatch: pytest.MonkeyPatch, key: str
+) -> None:
+    from types import SimpleNamespace
+
+    from spb.evaluation import _evaluation_model
+
+    model = SimpleNamespace(needs_key="huggingface-endpoint", key=None)
+    monkeypatch.setenv("SPB_LLM_KEY_HUGGINGFACE_ENDPOINT", key)
+    with pytest.raises(ValueError, match="SPB_LLM_KEY_HUGGINGFACE_ENDPOINT") as error:
+        _evaluation_model(SimpleNamespace(get_model=lambda name: model), "hf-glm")
+    assert "secret" not in str(error.value)
+
+
+def test_judge_uses_alias_environment_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from types import SimpleNamespace
+
+    from spb.evaluation import _llm_judge
+
+    model = SimpleNamespace(needs_key="huggingface-endpoint", key=None)
+    llm = SimpleNamespace(get_model=lambda name: model)
+    monkeypatch.setenv("SPB_LLM_KEY_HUGGINGFACE_ENDPOINT", "judge-key")
+    judge = _llm_judge(llm, object, "hf-glm")
+    assert judge.load_model().key == "judge-key"

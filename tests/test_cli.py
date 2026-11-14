@@ -914,3 +914,29 @@ def test_render_rejects_fragment_compression_without_opt_in(tmp_path: Path) -> N
     assert not (
         tmp_path / ".spb" / "build" / "pi_agent" / "project-assistant.md"
     ).exists()
+
+
+def test_project_env_uses_selected_root_and_preserves_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import os
+
+    from spb.cli import cli
+    from spb.initialization import initialize_project
+
+    root = tmp_path / "project"
+    initialize_project(root, harness="pi_agent")
+    (root / ".spb/.env").write_text(
+        'SPB_TEST_ENV="from file"\nSPB_TEST_EXISTING=from_file\n', encoding="utf-8"
+    )
+    monkeypatch.delenv("SPB_TEST_ENV", raising=False)
+    monkeypatch.setenv("SPB_TEST_EXISTING", "from shell")
+    monkeypatch.chdir(tmp_path)
+    try:
+        result = CliRunner().invoke(cli, ["validate", "--project-root", str(root)])
+        assert result.exit_code == 0, result.output
+        assert os.environ["SPB_TEST_ENV"] == "from file"
+        assert os.environ["SPB_TEST_EXISTING"] == "from shell"
+    finally:
+        os.environ.pop("SPB_TEST_ENV", None)
+    assert ".env" in (root / ".spb/.gitignore").read_text(encoding="utf-8")

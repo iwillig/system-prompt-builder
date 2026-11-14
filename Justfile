@@ -53,6 +53,30 @@ package-check: ci package
 run *args:
     pipenv run spb {{args}}
 
+# Check installed Python dependencies for conflicts.
+project-eval-deps:
+    pipenv run pip check
+
+# List stored llm key names without displaying their values.
+project-eval-keys:
+    pipenv run llm keys list
+
+# Validate the project-assistant evaluation suite without model calls.
+project-eval-validate:
+    pipenv run spb eval validate .spb/evals/project-assistant.yaml
+
+# Check the project-assistant prompt and suite without model calls.
+project-eval-plan:
+    pipenv run spb eval run .spb/prompts/project-assistant.md --harness pi_agent --suite .spb/evals/project-assistant.yaml --dry-run
+
+# Run the project-assistant evaluation; makes remote model calls.
+project-eval-live:
+    pipenv run spb eval run .spb/prompts/project-assistant.md --harness pi_agent --suite .spb/evals/project-assistant.yaml
+
+# Compare the full and compressed project-assistant prompts; makes remote model calls.
+project-eval-compare:
+    pipenv run spb eval compare .spb/prompts/project-assistant.md --harness pi_agent --suite .spb/evals/project-assistant.yaml --compressor llmlingua --compress-rate 0.9 --max-score-drop 0.05
+
 # Preview a one-fragment drop without evaluation or compression model calls.
 fragment-ablate-plan alias="routing":
     pipenv run spb eval ablate .spb/prompts/python-assistant.md --suite .spb/evals/python-assistant-hf.yaml --harness pi_agent --mode drop --fragments {{quote(alias)}} --dry-run --max-case-generations 102
