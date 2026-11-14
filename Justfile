@@ -34,6 +34,11 @@ typecheck:
 docs:
     pipenv run sphinx-build -W --keep-going -b html docs docs/_build/html
 
+# Build the Slidy presentation about the spb CLI tools.
+presentation:
+    mkdir -p build/presentations
+    pandoc --standalone --to slidy docs/presentations/spb-tools.md --output build/presentations/spb-tools.html
+
 # Build a wheel and source distribution in dist/.
 package:
     rm -rf dist
